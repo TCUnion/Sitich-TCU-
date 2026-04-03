@@ -1,4 +1,4 @@
-const API_BASE = 'https://service.criterium.tw';
+const API_BASE = 'https://powertcuapi.zeabur.app';
 
 export function openStravaAuth(): void {
   window.open(
