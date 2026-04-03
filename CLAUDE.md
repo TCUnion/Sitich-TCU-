@@ -7,6 +7,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **語言**：所有回應、文件、註解皆使用**繁體中文**
 - **專案路徑**：`/Volumes/OWC 2T/ClaudeCode/Sitich-TCU小幫手`
 - **隸屬工作區**：`/Volumes/OWC 2T/ClaudeCode`（MyObsidian vault 管理）
+- **GitHub**：`https://github.com/TCUnion/Sitich-TCU-`
+- **上游參考**：`https://github.com/samkhlin/stitch-STRAVATCU`（Google AI Studio 原始設計稿）
+
+## 專案概述
+
+**TCU CHALLENGE** — 自行車挑戰社群平台
+
+Google Stitch 生成的前端介面，整合 Gemini AI。功能包含：
+- 挑戰賽瀏覽與報名
+- 個人成績追蹤（計時、爬坡、繞圈賽等）
+- 車友社群與排行榜
+- AI 助理（Gemini API）
+
+## 技術棧
+
+| 項目 | 技術 |
+|------|------|
+| 框架 | React 19 + TypeScript |
+| 建構工具 | Vite 6 |
+| 樣式 | Tailwind CSS v4 |
+| 動畫 | Motion (Framer Motion) |
+| AI | Google Gemini API (`@google/genai`) |
+| 圖示 | lucide-react |
+| 後端 | Express（輕量 proxy） |
+
+## 環境設定
+
+`.env.local`（已加入 .gitignore）：
+```
+GEMINI_API_KEY="your_key_here"
+APP_URL="http://localhost:3000"
+```
+
+啟動開發伺服器：
+```bash
+npm install
+npm run dev   # → http://localhost:3000
+```
+
+## 檔案結構
+
+```
+src/
+  App.tsx     # 主元件（所有畫面邏輯）
+  types.ts    # TypeScript 型別定義
+  main.tsx    # 進入點
+  index.css   # 全域樣式
+index.html
+vite.config.ts
+metadata.json # 專案名稱與 Gemini 權限設定
+```
 
 ## 會話規則
 
