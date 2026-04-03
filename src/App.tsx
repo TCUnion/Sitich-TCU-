@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from './hooks/useAuth';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Menu as MenuIcon, 
@@ -68,8 +69,17 @@ const CHALLENGES: Challenge[] = [
 ];
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('explore');
+  const auth = useAuth();
+  const [currentScreen, setCurrentScreen] = useState<Screen>(() =>
+    auth.isLoggedIn ? 'explore' : 'login'
+  );
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+
+  useEffect(() => {
+    if (auth.isLoggedIn && currentScreen === 'login') {
+      setCurrentScreen('explore');
+    }
+  }, [auth.isLoggedIn]);
 
   const navigateTo = (screen: Screen, challenge?: Challenge) => {
     if (challenge) setSelectedChallenge(challenge);
@@ -77,14 +87,22 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
+  const avatar = auth.athlete?.profile ?? MOCK_USER.avatar;
+
   return (
     <div className="min-h-screen bg-surface text-on-surface font-sans selection:bg-primary selection:text-on-primary">
-      <Layout 
-        currentScreen={currentScreen} 
+      <Layout
+        currentScreen={currentScreen}
         onNavigate={navigateTo}
         onBack={() => navigateTo('explore')}
+        avatar={avatar}
       >
         <AnimatePresence mode="wait">
+          {currentScreen === 'login' && (
+            <motion.div key="login">
+              <LoginScreen onLogin={auth.login} />
+            </motion.div>
+          )}
           {currentScreen === 'explore' && (
             <motion.div key="explore">
               <ExploreScreen onNavigate={navigateTo} />
@@ -116,13 +134,19 @@ export default function App() {
   );
 }
 
-function Layout({ children, currentScreen, onNavigate, onBack }: { 
-  children: React.ReactNode, 
-  currentScreen: Screen, 
+function Layout({ children, currentScreen, onNavigate, onBack, avatar }: {
+  children: React.ReactNode,
+  currentScreen: Screen,
   onNavigate: (screen: Screen) => void,
-  onBack: () => void
+  onBack: () => void,
+  avatar: string,
 }) {
+  const isLogin = currentScreen === 'login';
   const isDetail = currentScreen === 'race-detail';
+
+  if (isLogin) {
+    return <div className="flex flex-col min-h-screen">{children}</div>;
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -143,7 +167,7 @@ function Layout({ children, currentScreen, onNavigate, onBack }: {
           </h1>
           {!isDetail && (
             <div className="ml-auto w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
-              <img src={MOCK_USER.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
             </div>
           )}
         </div>
@@ -157,26 +181,26 @@ function Layout({ children, currentScreen, onNavigate, onBack }: {
       {/* Bottom Navigation */}
       {!isDetail && (
         <nav className="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-3 h-20 bg-surface/90 backdrop-blur-xl border-t border-surface-container rounded-t-2xl shadow-2xl">
-          <NavButton 
-            active={currentScreen === 'explore'} 
+          <NavButton
+            active={currentScreen === 'explore'}
             onClick={() => onNavigate('explore')}
             icon={<Compass className="w-6 h-6" />}
             label="探索"
           />
-          <NavButton 
-            active={currentScreen === 'ranking'} 
+          <NavButton
+            active={currentScreen === 'ranking'}
             onClick={() => onNavigate('ranking')}
             icon={<Trophy className="w-6 h-6" />}
             label="排名"
           />
-          <NavButton 
-            active={currentScreen === 'register'} 
+          <NavButton
+            active={currentScreen === 'register'}
             onClick={() => onNavigate('register')}
             icon={<ClipboardCheck className="w-6 h-6" />}
             label="註冊"
           />
-          <NavButton 
-            active={currentScreen === 'profile'} 
+          <NavButton
+            active={currentScreen === 'profile'}
             onClick={() => onNavigate('profile')}
             icon={<UserIcon className="w-6 h-6" />}
             label="個人"
@@ -202,6 +226,45 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
 }
 
 // --- Screens ---
+
+function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  return (
+    <div className="flex flex-col min-h-screen bg-surface items-center justify-center px-6">
+      <div className="w-full max-w-sm flex flex-col items-center gap-8">
+        {/* Logo / Brand */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center">
+            <Flame className="w-8 h-8 text-on-primary" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-on-surface tracking-tight">TCU CHALLENGE</h1>
+            <p className="text-sm text-on-surface-variant mt-1">自行車挑戰社群平台</p>
+          </div>
+        </div>
+
+        {/* Description */}
+        <p className="text-center text-on-surface-variant text-sm leading-relaxed">
+          連結你的 Strava 帳號，<br />加入 TCU 挑戰賽、追蹤成績、與車友競技。
+        </p>
+
+        {/* Connect Button */}
+        <button
+          onClick={onLogin}
+          className="w-full flex items-center justify-center gap-3 bg-[#FC4C02] hover:bg-[#e04402] active:bg-[#c93d02] text-white font-semibold py-4 rounded-2xl transition-colors shadow-lg"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+          </svg>
+          使用 Strava 登入
+        </button>
+
+        <p className="text-xs text-on-surface-variant text-center">
+          登入即表示你同意 TCU 服務條款與隱私政策
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
   return (
