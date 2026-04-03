@@ -96,6 +96,7 @@ export default function App() {
         avatar={avatar}
         isLoggedIn={auth.isLoggedIn}
         onLogin={auth.login}
+        onLogout={auth.logout}
       >
         <AnimatePresence mode="wait">
           {currentScreen === 'login' && (
@@ -134,7 +135,7 @@ export default function App() {
   );
 }
 
-function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedIn, onLogin }: {
+function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedIn, onLogin, onLogout }: {
   children: React.ReactNode,
   currentScreen: Screen,
   onNavigate: (screen: Screen) => void,
@@ -142,9 +143,11 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
   avatar: string,
   isLoggedIn: boolean,
   onLogin: () => void,
+  onLogout: () => void,
 }) {
   const isLogin = currentScreen === 'login';
   const isDetail = currentScreen === 'race-detail';
+  const [showMenu, setShowMenu] = React.useState(false);
 
   if (isLogin) {
     return <div className="flex flex-col min-h-screen">{children}</div>;
@@ -168,11 +171,29 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
             TCU CHALLENGE
           </h1>
           {!isDetail && (
-            <div className="ml-auto">
+            <div className="ml-auto relative">
               {isLoggedIn ? (
-                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
-                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-                </div>
+                <>
+                  <button
+                    onClick={() => setShowMenu(v => !v)}
+                    className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20"
+                  >
+                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  </button>
+                  {showMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                      <div className="absolute right-0 top-12 z-50 bg-surface-container rounded-2xl shadow-xl overflow-hidden min-w-[120px]">
+                        <button
+                          onClick={() => { setShowMenu(false); onLogout(); }}
+                          className="w-full px-4 py-3 text-sm text-left text-error hover:bg-error/10 transition-colors"
+                        >
+                          登出
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
               ) : (
                 <button
                   onClick={onLogin}
