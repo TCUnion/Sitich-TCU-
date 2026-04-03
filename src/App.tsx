@@ -70,9 +70,7 @@ const CHALLENGES: Challenge[] = [
 
 export default function App() {
   const auth = useAuth();
-  const [currentScreen, setCurrentScreen] = useState<Screen>(() =>
-    auth.isLoggedIn ? 'explore' : 'login'
-  );
+  const [currentScreen, setCurrentScreen] = useState<Screen>('explore');
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
 
   useEffect(() => {
@@ -96,6 +94,8 @@ export default function App() {
         onNavigate={navigateTo}
         onBack={() => navigateTo('explore')}
         avatar={avatar}
+        isLoggedIn={auth.isLoggedIn}
+        onLogin={auth.login}
       >
         <AnimatePresence mode="wait">
           {currentScreen === 'login' && (
@@ -134,12 +134,14 @@ export default function App() {
   );
 }
 
-function Layout({ children, currentScreen, onNavigate, onBack, avatar }: {
+function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedIn, onLogin }: {
   children: React.ReactNode,
   currentScreen: Screen,
   onNavigate: (screen: Screen) => void,
   onBack: () => void,
   avatar: string,
+  isLoggedIn: boolean,
+  onLogin: () => void,
 }) {
   const isLogin = currentScreen === 'login';
   const isDetail = currentScreen === 'race-detail';
@@ -166,8 +168,22 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar }: {
             TCU CHALLENGE
           </h1>
           {!isDetail && (
-            <div className="ml-auto w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
-              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+            <div className="ml-auto">
+              {isLoggedIn ? (
+                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
+                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <button
+                  onClick={onLogin}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-semibold"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+                  </svg>
+                  登入
+                </button>
+              )}
             </div>
           )}
         </div>
