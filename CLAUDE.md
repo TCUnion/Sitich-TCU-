@@ -50,13 +50,15 @@ npm run dev   # → http://localhost:3000
 
 ```
 src/
-  App.tsx     # 主元件（所有畫面邏輯）
-  types.ts    # TypeScript 型別定義
-  main.tsx    # 進入點
-  index.css   # 全域樣式
+  App.tsx              # 主元件（所有畫面邏輯 + LoginScreen）
+  types.ts             # TypeScript 型別定義
+  main.tsx             # 進入點
+  index.css            # 全域樣式
+  services/api.ts      # API 呼叫（service.criterium.tw）
+  hooks/useAuth.ts     # Strava auth 狀態管理（postMessage + localStorage）
 index.html
 vite.config.ts
-metadata.json # 專案名稱與 Gemini 權限設定
+metadata.json          # 專案名稱與 Gemini 權限設定
 ```
 
 ## 會話規則
