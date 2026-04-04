@@ -1182,24 +1182,107 @@ function ProfileScreen() {
         </div>
 
         <div className="space-y-6">
+          {/* 基本資料 */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-on-surface-variant">
               <UserIcon className="w-4 h-4" />
               <span className="text-xs font-medium">基本資料</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <ProfileItem label="Strava 姓名" value={displayName} />
-              {locationStr
-                ? <ProfileItem label="所在地" value={locationStr} icon={<Globe className="w-3 h-3 text-secondary" />} />
-                : <ProfileItem label="所在地" value="—" icon={<Globe className="w-3 h-3 text-secondary" />} />
-              }
-              <ProfileItem label="TCU 真實姓名" value={tcuMember?.real_name ?? '—'} />
+              <ProfileItem
+                label="真實姓名"
+                value={tcuMember
+                  ? `${tcuMember.real_name ?? tcuMember.name ?? '—'}${tcuMember.nickname ? `（${tcuMember.nickname}）` : ''}`
+                  : displayName}
+              />
               <ProfileItem label="所屬車隊" value={tcuMember?.team ?? '—'} icon={<Users className="w-3 h-3 text-secondary" />} />
-              {tcuMember?.tcu_id && <ProfileItem label="TCU ID" value={tcuMember.tcu_id} />}
+              {(tcuMember?.gender || tcuMember?.birthday) && (
+                <ProfileItem
+                  label="性別 / 生日"
+                  value={[
+                    tcuMember.gender === 'Male' ? '男' : tcuMember.gender === 'Female' ? '女' : tcuMember.gender,
+                    tcuMember.birthday,
+                  ].filter(Boolean).join('  |  ')}
+                  icon={<UserCircle className="w-3 h-3 text-secondary" />}
+                />
+              )}
+              {(tcuMember?.nationality || tcuMember?.tcu_id) && (
+                <ProfileItem
+                  label="國籍 / 身分證號"
+                  value={[tcuMember?.nationality, tcuMember?.tcu_id].filter(Boolean).join('  |  ')}
+                  icon={<Globe className="w-3 h-3 text-secondary" />}
+                />
+              )}
               {tcuMember?.member_type && <ProfileItem label="會員類型" value={tcuMember.member_type} />}
-              {tcuMember?.nickname && <ProfileItem label="暱稱" value={tcuMember.nickname} />}
             </div>
           </div>
+
+          {/* 聯絡資訊 */}
+          {tcuMember && (tcuMember.email || tcuMember.phone || tcuMember.address) && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-on-surface-variant">
+                <Phone className="w-4 h-4" />
+                <span className="text-xs font-medium">聯絡資訊</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {tcuMember.email && (
+                  <ProfileItem label="電子郵件" value={tcuMember.email} icon={<MailIcon className="w-3 h-3 text-secondary" />} />
+                )}
+                {tcuMember.phone && (
+                  <ProfileItem label="電話" value={tcuMember.phone} icon={<Phone className="w-3 h-3 text-secondary" />} />
+                )}
+                {tcuMember.address && (
+                  <div className="col-span-2">
+                    <ProfileItem label="通訊地址" value={tcuMember.address} icon={<MapPin className="w-3 h-3 text-secondary" />} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 緊急聯絡人 */}
+          {tcuMember && tcuMember.emergency_contact && (
+            <div className="bg-surface-container-high rounded-2xl p-4 border border-red-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Heart className="w-4 h-4 text-red-400" />
+                <span className="text-xs font-medium text-red-400">緊急聯絡人</span>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-sm font-medium text-on-surface">{tcuMember.emergency_contact}</span>
+                {tcuMember.emergency_relation && (
+                  <span className="text-[10px] bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">{tcuMember.emergency_relation}</span>
+                )}
+                {tcuMember.emergency_phone && (
+                  <span className="text-xs text-on-surface-variant flex items-center gap-1">
+                    <Phone className="w-3 h-3" />{tcuMember.emergency_phone}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 個人簡介 & 技能 */}
+          {tcuMember && (tcuMember.self_introduction || tcuMember.self_intro || tcuMember.skills) && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-on-surface-variant">
+                <FileText className="w-4 h-4" />
+                <span className="text-xs font-medium">個人簡介 & 技能</span>
+              </div>
+              {(tcuMember.self_introduction || tcuMember.self_intro) && (
+                <div className="bg-surface-container-high rounded-2xl p-4 border border-white/5">
+                  <p className="text-xs text-on-surface-variant/90 leading-relaxed whitespace-pre-line">
+                    {tcuMember.self_introduction ?? tcuMember.self_intro}
+                  </p>
+                </div>
+              )}
+              {tcuMember.skills && (
+                <div className="bg-surface-container-high rounded-2xl p-4 border border-white/5">
+                  <p className="text-[10px] text-on-surface-variant/60 mb-1 uppercase tracking-widest">技能</p>
+                  <p className="text-xs text-on-surface-variant/90 leading-relaxed">{tcuMember.skills}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {!tcuMember && (
             <div className="bg-surface-container-high rounded-2xl p-5 border border-white/5 shadow-lg">
