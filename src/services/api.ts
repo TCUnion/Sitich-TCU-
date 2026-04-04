@@ -221,16 +221,24 @@ export interface TCUMemberSearch {
   team: string | null;
 }
 
-/** 透過 TCU 帳號或 TCU ID 搜尋會員 */
+/** 透過 TCU 帳號或 TCU ID 搜尋會員（兩段查詢避免 PostgREST or 格式問題） */
 export async function findTCUMemberByIdOrAccount(input: string): Promise<TCUMemberSearch | null> {
   const upper = input.toUpperCase();
-  const { data, error } = await supabase
+  const sel = 'email, real_name, name, account, tcu_id, team';
+
+  const { data: byAccount } = await supabase
     .from('tcu_members')
-    .select('email, real_name, name, account, tcu_id, team')
-    .or(`account.eq.${upper},tcu_id.eq.${input}`)
+    .select(sel)
+    .eq('account', upper)
     .maybeSingle();
-  if (error) throw error;
-  return data as TCUMemberSearch | null;
+  if (byAccount) return byAccount as TCUMemberSearch;
+
+  const { data: byId } = await supabase
+    .from('tcu_members')
+    .select(sel)
+    .eq('tcu_id', input)
+    .maybeSingle();
+  return (byId as TCUMemberSearch) ?? null;
 }
 
 /** 觸發 OTP 綁定郵件 */
