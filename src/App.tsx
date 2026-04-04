@@ -386,6 +386,14 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
     return dB - dA;
   });
 
+  const featuredSeg = sorted.find(s => {
+    const d = getDaysRemaining(s.end_date);
+    return d === null || d > 0;
+  }) ?? sorted[0] ?? null;
+  const featuredChallenge = featuredSeg ? segmentToChallenge(featuredSeg) : null;
+  const heroImg = featuredSeg?.og_image || CHALLENGES[1].image;
+  const heroTitle = featuredChallenge?.title || 'THE RED RIDGE';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -397,24 +405,26 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
       <section className="relative rounded-2xl overflow-hidden min-h-[320px] flex items-end p-6 bg-surface-container-low shadow-xl">
         <div className="absolute inset-0 z-0">
           <img
-            src={CHALLENGES[1].image}
+            src={heroImg}
             alt="Hero"
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-full object-cover opacity-70"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent" />
         </div>
         <div className="relative z-10 w-full space-y-4">
           <div className="inline-block px-3 py-1 bg-tertiary/20 text-tertiary rounded text-[10px] font-bold tracking-widest uppercase italic">
-            每週精選挑戰
+            精選挑戰
           </div>
-          <h2 className="text-4xl italic-bold font-headline leading-tight uppercase">THE RED RIDGE</h2>
-          <button
-            onClick={() => onNavigate('race-detail', CHALLENGES[1])}
-            className="bg-primary text-on-primary px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20"
-          >
-            <span>立即註冊</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
+          <h2 className="text-4xl italic-bold font-headline leading-tight uppercase">{heroTitle}</h2>
+          {featuredChallenge && (
+            <button
+              onClick={() => onNavigate('race-detail', featuredChallenge)}
+              className="bg-primary text-on-primary px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20"
+            >
+              <span>查看詳情</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </section>
 
@@ -1527,7 +1537,7 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
         <img
           src={challenge.image || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'}
           alt={challenge.title}
-          className="w-full h-full object-cover grayscale-[0.4] brightness-[0.6]"
+          className="w-full h-full object-cover grayscale-[0.3] brightness-[0.7]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
         <div className="absolute bottom-8 left-6 right-6">
