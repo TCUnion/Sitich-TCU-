@@ -102,16 +102,28 @@ export interface RegistrationRecord {
   athlete_name: string;
   athlete_profile: string | null;
   team: string;
+  elapsed_time: number | null;
 }
 
 /** 取得指定路段的所有報名者（依報名時間正序） */
 export async function getSegmentRegistrations(segmentId: number): Promise<RegistrationRecord[]> {
   const { data } = await supabase
     .from('registrations')
-    .select('strava_athlete_id, athlete_name, athlete_profile, team')
+    .select('strava_athlete_id, athlete_name, athlete_profile, team, elapsed_time')
     .eq('segment_id', segmentId)
     .order('registered_at', { ascending: true, nullsFirst: false });
   return (data ?? []) as RegistrationRecord[];
+}
+
+/** 取得指定路段的成績（來自 segment_elapsed_times 表） */
+export async function getSegmentElapsedTimes(segmentId: number): Promise<Map<number, number>> {
+  const { data } = await supabase
+    .from('segment_elapsed_times')
+    .select('strava_athlete_id, elapsed_time')
+    .eq('segment_id', segmentId);
+  const map = new Map<number, number>();
+  (data ?? []).forEach(r => map.set(Number(r.strava_athlete_id), Number(r.elapsed_time)));
+  return map;
 }
 
 /** 取消報名 */

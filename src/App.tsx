@@ -33,7 +33,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getSegmentRegistrations, registerChallenge, unregisterChallenge, RegistrationRecord } from './services/api';
+import { getLeaderboard, getMyRegistrations, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -569,15 +569,17 @@ function RankingScreen() {
         // 主資料：所有報名者
         const regs: RegistrationRecord[] = await getSegmentRegistrations(selectedSeg.id);
 
-        // 次要資料：Strava 完賽成績（可能失敗，失敗時忽略）
-        let timeMap = new Map<number, number>();
+        // 次要資料（優先序高→低）：segment_elapsed_times > Strava 排行榜
+        const dbTimeMap = await getSegmentElapsedTimes(selectedSeg.id);
+
+        let stravaTimeMap = new Map<number, number>();
         if (accessToken && selectedSeg.strava_id) {
           try {
             const lb = await getLeaderboard(String(selectedSeg.strava_id), accessToken);
             const lbList: LeaderboardEntry[] = Array.isArray(lb) ? lb : (lb.entries ?? []);
             lbList.forEach(e => {
               if (e.athlete_id != null && e.elapsed_time != null) {
-                timeMap.set(e.athlete_id, e.elapsed_time);
+                stravaTimeMap.set(e.athlete_id, e.elapsed_time);
               }
             });
           } catch {
@@ -592,7 +594,7 @@ function RankingScreen() {
             name: r.athlete_name,
             profile: r.athlete_profile,
             team: r.team,
-            elapsedTime: timeMap.get(r.strava_athlete_id) ?? null,
+            elapsedTime: dbTimeMap.get(r.strava_athlete_id) ?? stravaTimeMap.get(r.strava_athlete_id) ?? null,
           }));
           const hasResults = withTime.some(e => e.elapsedTime !== null);
           if (hasResults) {
