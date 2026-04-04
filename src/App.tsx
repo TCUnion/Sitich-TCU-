@@ -791,7 +791,7 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                   {seg.end_date && (
                     <div className="flex items-center gap-2 text-on-surface-variant text-xs mb-4">
                       <Clock className="w-3 h-3 shrink-0" />
-                      <span>截止：{seg.end_date}</span>
+                      <span>截止：{seg.end_date?.slice(0, 10)}</span>
                     </div>
                   )}
                   <button className="w-full bg-primary text-on-primary py-4 rounded-xl italic-bold font-headline uppercase tracking-widest active:scale-[0.98] transition-all flex justify-center items-center gap-2 shadow-lg shadow-primary/20">
@@ -838,7 +838,7 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                         <div>
                           {daysLeft !== null && <div className="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">{daysLeft} 天</div>}
                           <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{seg.description || seg.name}</h4>
-                          {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date}</p>}
+                          {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date?.slice(0, 10)}</p>}
                         </div>
                         <div className="text-right shrink-0 ml-4">
                           <div className="italic-bold font-headline text-primary text-xl">{challenge.distance}</div>
@@ -869,7 +869,7 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                         <div>
                           <div className="bg-surface-container text-on-surface-variant text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">已結束</div>
                           <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{seg.description || seg.name}</h4>
-                          {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date}</p>}
+                          {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date?.slice(0, 10)}</p>}
                         </div>
                         <div className="text-right shrink-0 ml-4">
                           <div className="italic-bold font-headline text-white text-xl">{challenge.distance}</div>
