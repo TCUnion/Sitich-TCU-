@@ -586,21 +586,24 @@ function RankingScreen() {
         }
 
         if (!cancelled) {
-          // 合併：有成績的排前面，依時間正序；無成績的排後面
-          const merged: RankingEntry[] = regs.map(r => ({
+          // 保留報名順序作為基礎序號
+          const withTime: RankingEntry[] = regs.map(r => ({
             athleteId: r.strava_athlete_id,
             name: r.athlete_name,
             profile: r.athlete_profile,
             team: r.team,
             elapsedTime: timeMap.get(r.strava_athlete_id) ?? null,
           }));
-          merged.sort((a, b) => {
-            if (a.elapsedTime !== null && b.elapsedTime !== null) return a.elapsedTime - b.elapsedTime;
-            if (a.elapsedTime !== null) return -1;
-            if (b.elapsedTime !== null) return 1;
-            return 0;
-          });
-          setRankingEntries(merged);
+          const hasResults = withTime.some(e => e.elapsedTime !== null);
+          if (hasResults) {
+            // 有成績：完成者依時間正序排前，未完成者依報名順序排後
+            const done = withTime.filter(e => e.elapsedTime !== null).sort((a, b) => a.elapsedTime! - b.elapsedTime!);
+            const pending = withTime.filter(e => e.elapsedTime === null);
+            setRankingEntries([...done, ...pending]);
+          } else {
+            // 無人完成：依報名順序顯示
+            setRankingEntries(withTime);
+          }
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -706,20 +709,16 @@ function RankingScreen() {
           )}
 
           <div className="space-y-3">
-            {rankingEntries.map((entry, i) => {
-              const hasTime = entry.elapsedTime !== null;
-              const rank = hasTime ? String(i + 1).padStart(2, '0') : '—';
-              return (
-                <ChallengerRow
-                  key={entry.athleteId}
-                  rank={rank}
-                  name={entry.name}
-                  profile={entry.profile ?? undefined}
-                  time={hasTime ? formatElapsedTime(entry.elapsedTime!) : '未完成'}
-                  isUser={entry.athleteId === athlete?.id}
-                />
-              );
-            })}
+            {rankingEntries.map((entry, i) => (
+              <ChallengerRow
+                key={entry.athleteId}
+                rank={String(i + 1).padStart(2, '0')}
+                name={entry.name}
+                profile={entry.profile ?? undefined}
+                time={entry.elapsedTime !== null ? formatElapsedTime(entry.elapsedTime) : '未完成'}
+                isUser={entry.athleteId === athlete?.id}
+              />
+            ))}
           </div>
         </section>
       )}
