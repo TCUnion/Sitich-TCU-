@@ -97,6 +97,22 @@ export async function registerChallenge(
   if (error) throw error;
 }
 
+export interface RegistrationRecord {
+  strava_athlete_id: number;
+  athlete_name: string;
+  athlete_profile: string | null;
+  team: string;
+}
+
+/** 取得指定路段的所有報名者 */
+export async function getSegmentRegistrations(segmentId: number): Promise<RegistrationRecord[]> {
+  const { data } = await supabase
+    .from('registrations')
+    .select('strava_athlete_id, athlete_name, athlete_profile, team')
+    .eq('segment_id', segmentId);
+  return (data ?? []) as RegistrationRecord[];
+}
+
 /** 取消報名 */
 export async function unregisterChallenge(athleteId: number, segmentId: number): Promise<void> {
   const { error } = await supabase

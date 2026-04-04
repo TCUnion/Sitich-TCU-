@@ -33,7 +33,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, registerChallenge, unregisterChallenge } from './services/api';
+import { getLeaderboard, getMyRegistrations, getSegmentRegistrations, registerChallenge, unregisterChallenge, RegistrationRecord } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -533,49 +533,85 @@ function EventCard({ title, participants, time, image, isTimer, onClick }: { tit
   );
 }
 
+interface RankingEntry {
+  athleteId: number;
+  name: string;
+  profile: string | null;
+  team: string;
+  elapsedTime: number | null; // null = 未完成
+}
+
 function RankingScreen() {
   const { accessToken, athlete, isLoggedIn } = useAuth();
   const { segments } = useSegmentData();
-  const [selectedSegId, setSelectedSegId] = useState<string | null>(null);
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [selectedSeg, setSelectedSeg] = useState<typeof segments[0] | null>(null);
+  const [rankingEntries, setRankingEntries] = useState<RankingEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // 自動選取第一個進行中路段
   useEffect(() => {
-    if (segments.length > 0 && !selectedSegId) {
+    if (segments.length > 0 && !selectedSeg) {
       const active = segments.find(s => {
         const d = getDaysRemaining(s.end_date);
         return d === null || d > 0;
       }) ?? segments[0];
-      setSelectedSegId(String(active.strava_id || active.id));
+      setSelectedSeg(active);
     }
-  }, [segments, selectedSegId]);
+  }, [segments, selectedSeg]);
 
-  // 取得排行榜
+  // 取得報名清單 + 選填成績（合併）
   useEffect(() => {
-    if (!selectedSegId || !accessToken) return;
+    if (!selectedSeg) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
-      setError(null);
       try {
-        const data = await getLeaderboard(selectedSegId, accessToken);
-        if (!cancelled) {
-          const list: LeaderboardEntry[] = Array.isArray(data) ? data : (data.entries ?? []);
-          setEntries(list);
+        // 主資料：所有報名者
+        const regs: RegistrationRecord[] = await getSegmentRegistrations(selectedSeg.id);
+
+        // 次要資料：Strava 完賽成績（可能失敗，失敗時忽略）
+        let timeMap = new Map<number, number>();
+        if (accessToken && selectedSeg.strava_id) {
+          try {
+            const lb = await getLeaderboard(String(selectedSeg.strava_id), accessToken);
+            const lbList: LeaderboardEntry[] = Array.isArray(lb) ? lb : (lb.entries ?? []);
+            lbList.forEach(e => {
+              if (e.athlete_id != null && e.elapsed_time != null) {
+                timeMap.set(e.athlete_id, e.elapsed_time);
+              }
+            });
+          } catch {
+            // 排行榜無法取得，僅顯示報名清單
+          }
         }
-      } catch {
-        if (!cancelled) setError('無法載入排行榜');
+
+        if (!cancelled) {
+          // 合併：有成績的排前面，依時間正序；無成績的排後面
+          const merged: RankingEntry[] = regs.map(r => ({
+            athleteId: r.strava_athlete_id,
+            name: r.athlete_name,
+            profile: r.athlete_profile,
+            team: r.team,
+            elapsedTime: timeMap.get(r.strava_athlete_id) ?? null,
+          }));
+          merged.sort((a, b) => {
+            if (a.elapsedTime !== null && b.elapsedTime !== null) return a.elapsedTime - b.elapsedTime;
+            if (a.elapsedTime !== null) return -1;
+            if (b.elapsedTime !== null) return 1;
+            return 0;
+          });
+          setRankingEntries(merged);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedSegId, accessToken]);
+  }, [selectedSeg, accessToken]);
 
-  const myEntry = entries.find(e => e.athlete_id === athlete?.id);
-  const myRank = myEntry?.rank ?? (myEntry ? entries.indexOf(myEntry) + 1 : null);
+  const completedCount = rankingEntries.filter(e => e.elapsedTime !== null).length;
+  const myEntry = rankingEntries.find(e => e.athleteId === athlete?.id);
+  const myRank = myEntry ? rankingEntries.indexOf(myEntry) + 1 : null;
 
   return (
     <motion.div
@@ -587,12 +623,11 @@ function RankingScreen() {
       {/* 路段選擇器 */}
       <section className="mb-6 -mx-4 px-4 overflow-x-auto hide-scrollbar flex gap-2 py-1">
         {segments.map(seg => {
-          const id = String(seg.strava_id || seg.id);
-          const active = selectedSegId === id;
+          const active = selectedSeg?.id === seg.id;
           return (
             <button
-              key={id}
-              onClick={() => setSelectedSegId(id)}
+              key={seg.id}
+              onClick={() => setSelectedSeg(seg)}
               className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
                 active
                   ? 'bg-primary text-on-primary shadow-lg shadow-primary/20'
@@ -619,11 +654,11 @@ function RankingScreen() {
           <div className="relative mb-8">
             <div className="w-44 h-44 rounded-full border-4 border-primary flex items-center justify-center p-2 shadow-[0_0_30px_rgba(253,228,43,0.3)]">
               <div className="w-full h-full rounded-full overflow-hidden border-4 border-surface-container">
-                <img src={athlete?.profile ?? myEntry.athlete_profile} alt="Me" className="w-full h-full object-cover" />
+                <img src={athlete?.profile ?? myEntry.profile ?? undefined} alt="Me" className="w-full h-full object-cover" />
               </div>
             </div>
             <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary font-headline italic-bold text-2xl px-8 py-1.5 rounded-full kinetic-slant shadow-xl">
-              RANK #{myRank}
+              {myEntry.elapsedTime !== null ? `RANK #${myRank}` : '已報名'}
             </div>
           </div>
 
@@ -632,15 +667,15 @@ function RankingScreen() {
               <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">個人最佳時間</span>
               <div className="mt-2">
                 <span className="text-2xl font-headline italic-bold text-white">
-                  {myEntry.elapsed_time ? formatElapsedTime(myEntry.elapsed_time) : '—'}
+                  {myEntry.elapsedTime !== null ? formatElapsedTime(myEntry.elapsedTime) : '未完成'}
                 </span>
               </div>
             </div>
             <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-tertiary flex flex-col justify-between shadow-lg">
-              <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">排名 / 總人數</span>
+              <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">完成 / 報名</span>
               <div className="mt-2">
                 <span className="text-2xl font-headline italic-bold text-white">
-                  {myRank} / {entries.length}
+                  {completedCount} / {rankingEntries.length}
                 </span>
               </div>
             </div>
@@ -653,32 +688,33 @@ function RankingScreen() {
         <section className="mb-12">
           <div className="flex justify-between items-end mb-6 px-2">
             <h2 className="font-headline italic-bold text-xl uppercase tracking-wider text-secondary">CHALLENGERS</h2>
-            {entries.length > 0 && (
-              <span className="text-[10px] text-on-surface-variant uppercase font-medium">{entries.length} 名車手</span>
+            {rankingEntries.length > 0 && (
+              <span className="text-[10px] text-on-surface-variant uppercase font-medium">{rankingEntries.length} 名車手</span>
             )}
           </div>
 
           {isLoading && (
             <div className="text-center text-on-surface/50 py-12 text-sm">載入中...</div>
           )}
-          {error && (
-            <div className="text-center text-on-surface/50 py-12 text-sm">{error}</div>
-          )}
-          {!isLoading && !error && entries.length === 0 && (
-            <div className="text-center text-on-surface/50 py-12 text-sm">尚無排行榜資料</div>
+          {!isLoading && rankingEntries.length === 0 && (
+            <div className="text-center text-on-surface/50 py-12 text-sm">尚無報名者</div>
           )}
 
           <div className="space-y-3">
-            {entries.map((entry, i) => (
-              <ChallengerRow
-                key={entry.athlete_id ?? i}
-                rank={String(entry.rank ?? i + 1).padStart(2, '0')}
-                name={entry.athlete_name ?? '—'}
-                profile={entry.athlete_profile}
-                time={entry.elapsed_time ? formatElapsedTime(entry.elapsed_time) : '—'}
-                isUser={entry.athlete_id === athlete?.id}
-              />
-            ))}
+            {rankingEntries.map((entry, i) => {
+              const hasTime = entry.elapsedTime !== null;
+              const rank = hasTime ? String(i + 1).padStart(2, '0') : '—';
+              return (
+                <ChallengerRow
+                  key={entry.athleteId}
+                  rank={rank}
+                  name={entry.name}
+                  profile={entry.profile ?? undefined}
+                  time={hasTime ? formatElapsedTime(entry.elapsedTime!) : '未完成'}
+                  isUser={entry.athleteId === athlete?.id}
+                />
+              );
+            })}
           </div>
         </section>
       )}
