@@ -27,13 +27,17 @@ import {
   Plus,
   ChevronRight,
   HelpCircle,
-  Flame
+  Flame,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  UserCheck
 } from 'lucide-react';
 
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -1052,6 +1056,12 @@ function ProfileScreen() {
   const [myTimesMap, setMyTimesMap] = useState<Map<number, number>>(new Map());
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [tcuMember, setTcuMember] = useState<TCUMemberProfile | null>(null);
+  const [bindingStep, setBindingStep] = useState<'input' | 'otp' | 'success'>('input');
+  const [bindingInput, setBindingInput] = useState('');
+  const [bindingMemberData, setBindingMemberData] = useState<TCUMemberSearch | null>(null);
+  const [bindingOtp, setBindingOtp] = useState('');
+  const [bindingLoading, setBindingLoading] = useState(false);
+  const [bindingError, setBindingError] = useState('');
 
   useEffect(() => {
     if (!athlete) return;
@@ -1066,6 +1076,70 @@ function ProfileScreen() {
       setTcuMember(tcu);
     }).finally(() => setLoadingRecords(false));
   }, [athlete?.id]);
+
+  const refreshTcuMember = async () => {
+    if (!athlete) return;
+    const tcu = await getTCUMemberByStravaId(athlete.id);
+    setTcuMember(tcu);
+  };
+
+  const handleBindingSubmit = async () => {
+    if (!athlete || !bindingInput.trim()) return;
+    setBindingLoading(true);
+    setBindingError('');
+    try {
+      const member = await findTCUMemberByIdOrAccount(bindingInput.trim());
+      if (!member) {
+        setBindingError('查無此會員資料。請先至 https://www.tsu.com.tw/ 進行註冊。系統每天早上 9 點更新會員資料，請於更新後再試一次。');
+        return;
+      }
+      setBindingMemberData(member);
+      const res = await triggerMemberBindingOtp(
+        member.email,
+        member.real_name ?? member.name ?? '',
+        athlete.id,
+        bindingInput.trim(),
+      );
+      if (res.already_bound) {
+        setBindingStep('success');
+        await refreshTcuMember();
+        window.dispatchEvent(new Event('tcu-binding-success'));
+      } else {
+        setBindingStep('otp');
+      }
+    } catch (e) {
+      setBindingError('發送驗證碼失敗，請稍後再試。');
+    } finally {
+      setBindingLoading(false);
+    }
+  };
+
+  const handleOtpVerify = async () => {
+    if (!athlete || !bindingMemberData || !bindingOtp.trim()) return;
+    setBindingLoading(true);
+    setBindingError('');
+    try {
+      const valid = await verifyMemberOtp(bindingMemberData.email, bindingOtp.trim());
+      if (!valid) {
+        setBindingError('驗證碼錯誤，請重新輸入。');
+        return;
+      }
+      await confirmMemberBinding(
+        bindingMemberData.email,
+        athlete.id,
+        bindingMemberData.account ?? '',
+        bindingMemberData.real_name ?? bindingMemberData.name ?? '',
+      );
+      await clearMemberOtp(bindingMemberData.email);
+      setBindingStep('success');
+      await refreshTcuMember();
+      window.dispatchEvent(new Event('tcu-binding-success'));
+    } catch (e) {
+      setBindingError('綁定失敗，請稍後再試。');
+    } finally {
+      setBindingLoading(false);
+    }
+  };
 
   const mySegments = segments.filter(s => mySegmentIds.includes(s.id));
   const displayName = athlete ? `${athlete.firstname} ${athlete.lastname}` : '—';
@@ -1280,13 +1354,88 @@ function ProfileScreen() {
 
           {!tcuMember && (
             <div className="bg-surface-container-high rounded-2xl p-5 border border-white/5 shadow-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <Edit3 className="w-4 h-4 text-on-surface-variant" />
-                <span className="text-xs font-medium text-on-surface-variant">尚未綁定 TCU 帳號</span>
+              <div className="flex items-center gap-2 mb-4">
+                <UserCheck className="w-4 h-4 text-primary" />
+                <span className="text-xs font-medium">綁定 TCU 帳號</span>
               </div>
-              <p className="text-xs text-on-surface-variant/80 leading-relaxed">
-                前往 TCU 會員中心完成 Strava 綁定，即可顯示真實姓名、車隊、會員資料。
-              </p>
+
+              {bindingStep === 'input' && (
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs text-on-surface-variant/80 leading-relaxed">
+                    輸入 TCU 帳號或會員編號，即可同步真實姓名、車隊與會員資料。
+                  </p>
+                  <input
+                    type="text"
+                    value={bindingInput}
+                    onChange={e => { setBindingInput(e.target.value); setBindingError(''); }}
+                    onKeyDown={e => e.key === 'Enter' && handleBindingSubmit()}
+                    placeholder="TCU 帳號 或 會員編號"
+                    className="w-full bg-surface-container rounded-xl px-4 py-3 text-sm border border-white/10 focus:outline-none focus:border-primary/50 placeholder-on-surface-variant/40"
+                  />
+                  {bindingError && (
+                    <div className="flex items-start gap-2 text-error text-xs leading-relaxed">
+                      <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>{bindingError}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={handleBindingSubmit}
+                    disabled={bindingLoading || !bindingInput.trim()}
+                    className="w-full bg-primary text-on-primary py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-40 active:scale-95 transition-all"
+                  >
+                    {bindingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                    {bindingLoading ? '查詢中…' : '下一步'}
+                  </button>
+                </div>
+              )}
+
+              {bindingStep === 'otp' && bindingMemberData && (
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs text-on-surface-variant/80 leading-relaxed">
+                    驗證碼已寄至 <span className="text-primary font-medium">{bindingMemberData.email}</span>，請輸入 6 位數驗證碼。
+                  </p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={bindingOtp}
+                    onChange={e => { setBindingOtp(e.target.value.replace(/\D/g, '')); setBindingError(''); }}
+                    onKeyDown={e => e.key === 'Enter' && handleOtpVerify()}
+                    placeholder="6 位數驗證碼"
+                    className="w-full bg-surface-container rounded-xl px-4 py-3 text-sm border border-white/10 focus:outline-none focus:border-primary/50 placeholder-on-surface-variant/40 tracking-widest text-center"
+                  />
+                  {bindingError && (
+                    <div className="flex items-start gap-2 text-error text-xs">
+                      <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>{bindingError}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={handleOtpVerify}
+                    disabled={bindingLoading || bindingOtp.length < 6}
+                    className="w-full bg-primary text-on-primary py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-40 active:scale-95 transition-all"
+                  >
+                    {bindingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    {bindingLoading ? '驗證中…' : '確認綁定'}
+                  </button>
+                  <button
+                    onClick={() => { setBindingStep('input'); setBindingOtp(''); setBindingError(''); }}
+                    className="text-xs text-on-surface-variant/60 text-center hover:text-on-surface-variant transition-colors"
+                  >
+                    重新輸入帳號
+                  </button>
+                </div>
+              )}
+
+              {bindingStep === 'success' && (
+                <div className="flex flex-col items-center gap-3 py-2">
+                  <CheckCircle2 className="w-10 h-10 text-primary" />
+                  <p className="text-sm font-medium">綁定成功！</p>
+                  <p className="text-xs text-on-surface-variant/80 text-center">
+                    TCU 會員資料已同步，頁面將自動更新。
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

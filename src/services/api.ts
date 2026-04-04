@@ -1,6 +1,26 @@
 import { createClient } from '@supabase/supabase-js';
 
 const API_BASE = 'https://service.criterium.tw';
+const PRIMARY_API = import.meta.env.VITE_API_URL as string;
+const BACKUP_API = import.meta.env.VITE_BACKUP_API_URL as string;
+
+async function apiPost<T = unknown>(path: string, body: Record<string, unknown>): Promise<T> {
+  const tryFetch = async (base: string) => {
+    const res = await fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    return (text ? JSON.parse(text) : {}) as T;
+  };
+  try {
+    return await tryFetch(PRIMARY_API);
+  } catch {
+    return await tryFetch(BACKUP_API);
+  }
+}
 
 export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -190,6 +210,77 @@ export async function getTCUMemberByStravaId(athleteId: number): Promise<TCUMemb
   const { data, error: memberError } = await query.limit(1);
   if (memberError) console.error('[TCU] tcu_members error:', memberError);
   return (data?.[0] as TCUMemberProfile) ?? null;
+}
+
+export interface TCUMemberSearch {
+  email: string;
+  real_name: string | null;
+  name: string | null;
+  account: string | null;
+  tcu_id: string | null;
+  team: string | null;
+}
+
+/** 透過 TCU 帳號或 TCU ID 搜尋會員 */
+export async function findTCUMemberByIdOrAccount(input: string): Promise<TCUMemberSearch | null> {
+  const upper = input.toUpperCase();
+  const { data, error } = await supabase
+    .from('tcu_members')
+    .select('email, real_name, name, account, tcu_id, team')
+    .or(`account.eq.${upper},tcu_id.eq.${input}`)
+    .maybeSingle();
+  if (error) throw error;
+  return data as TCUMemberSearch | null;
+}
+
+/** 觸發 OTP 綁定郵件 */
+export async function triggerMemberBindingOtp(
+  email: string,
+  memberName: string,
+  stravaId: number,
+  inputId: string,
+): Promise<{ already_bound?: boolean }> {
+  return apiPost('/api/auth/member-binding', {
+    email,
+    memberName,
+    stravaId,
+    input_id: inputId,
+    action: 'generate_otp',
+  });
+}
+
+/** 驗證 OTP（查詢 tcu_members.otp_code） */
+export async function verifyMemberOtp(email: string, otp: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('tcu_members')
+    .select('email')
+    .eq('email', email)
+    .eq('otp_code', otp)
+    .maybeSingle();
+  return data !== null;
+}
+
+/** 確認綁定（後端寫入 strava_member_bindings） */
+export async function confirmMemberBinding(
+  email: string,
+  stravaId: number,
+  tcuAccount: string,
+  memberName: string,
+): Promise<void> {
+  await apiPost('/api/auth/confirm-binding', {
+    email,
+    stravaId,
+    tcu_account: tcuAccount,
+    member_name: memberName,
+  });
+}
+
+/** 清除 OTP */
+export async function clearMemberOtp(email: string): Promise<void> {
+  await supabase
+    .from('tcu_members')
+    .update({ otp_code: null, otp_expires_at: null })
+    .eq('email', email);
 }
 
 /** 取得官方賽事（published，日期倒序） */
