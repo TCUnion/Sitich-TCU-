@@ -1286,11 +1286,13 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
       </section>
 
       {/* Sticky Footer */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-surface to-transparent z-50">
-        <button onClick={() => onNavigate('register')} className="w-full bg-secondary hover:bg-secondary/90 text-on-secondary py-5 rounded-2xl font-headline italic-bold text-xl uppercase tracking-wider shadow-[0_20px_40px_rgba(134,252,136,0.2)] active:scale-95 transition-all">
-          立即報名 (CONFIRM REGISTRATION)
-        </button>
-      </div>
+      {(daysRemaining === null || daysRemaining > 0) && (
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-surface to-transparent z-50">
+          <button onClick={() => onNavigate('register')} className="w-full bg-secondary hover:bg-secondary/90 text-on-secondary py-5 rounded-2xl font-headline italic-bold text-xl uppercase tracking-wider shadow-[0_20px_40px_rgba(134,252,136,0.2)] active:scale-95 transition-all">
+            立即報名 (CONFIRM REGISTRATION)
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
