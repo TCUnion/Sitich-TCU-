@@ -1250,39 +1250,31 @@ function ProfileScreen() {
                 <span className="text-xs font-medium text-red-400">緊急聯絡人</span>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-sm font-medium text-on-surface">{tcuMember.emergency_contact}</span>
+                <span className="text-sm font-medium text-on-surface">{tcuMember.emergency_contact ? tcuMember.emergency_contact.charAt(0) + '**' : ''}</span>
                 {tcuMember.emergency_contact_relation && (
                   <span className="text-[10px] bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">{tcuMember.emergency_contact_relation}</span>
                 )}
                 {tcuMember.emergency_contact_phone && (
                   <span className="text-xs text-on-surface-variant flex items-center gap-1">
-                    <Phone className="w-3 h-3" />{tcuMember.emergency_contact_phone}
+                    <Phone className="w-3 h-3" />{tcuMember.emergency_contact_phone.slice(0, 4) + '****' + tcuMember.emergency_contact_phone.slice(-4)}
                   </span>
                 )}
               </div>
             </div>
           )}
 
-          {/* 個人簡介 & 技能 */}
-          {tcuMember && (tcuMember.self_introduction || tcuMember.skills) && (
+          {/* 個人簡介 */}
+          {tcuMember && tcuMember.self_introduction && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-on-surface-variant">
                 <FileText className="w-4 h-4" />
-                <span className="text-xs font-medium">個人簡介 & 技能</span>
+                <span className="text-xs font-medium">個人簡介</span>
               </div>
-              {tcuMember.self_introduction && (
-                <div className="bg-surface-container-high rounded-2xl p-4 border border-white/5">
-                  <p className="text-xs text-on-surface-variant/90 leading-relaxed whitespace-pre-line">
-                    {tcuMember.self_introduction}
-                  </p>
-                </div>
-              )}
-              {tcuMember.skills && (
-                <div className="bg-surface-container-high rounded-2xl p-4 border border-white/5">
-                  <p className="text-[10px] text-on-surface-variant/60 mb-1 uppercase tracking-widest">技能</p>
-                  <p className="text-xs text-on-surface-variant/90 leading-relaxed">{tcuMember.skills}</p>
-                </div>
-              )}
+              <div className="bg-surface-container-high rounded-2xl p-4 border border-white/5">
+                <p className="text-xs text-on-surface-variant/90 leading-relaxed whitespace-pre-line">
+                  {tcuMember.self_introduction}
+                </p>
+              </div>
             </div>
           )}
 
