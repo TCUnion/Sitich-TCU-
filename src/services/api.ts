@@ -148,7 +148,6 @@ export async function unregisterChallenge(athleteId: number, segmentId: number):
 
 export interface TCUMemberProfile {
   email: string;
-  real_name: string | null;
   name: string | null;
   account: string | null;
   nickname: string | null;
@@ -164,23 +163,23 @@ export interface TCUMemberProfile {
   emergency_contact: string | null;
   emergency_phone: string | null;
   emergency_relation: string | null;
-  self_introduction: string | null;
   self_intro: string | null;
   skills: string | null;
 }
 
 /** 透過 Strava athlete ID 查詢 TCU 會員資料（兩步查詢：bindings → tcu_members） */
 export async function getTCUMemberByStravaId(athleteId: number): Promise<TCUMemberProfile | null> {
-  const { data: bindings } = await supabase
+  const { data: bindings, error: bindingError } = await supabase
     .from('strava_member_bindings')
     .select('tcu_member_email, tcu_account')
     .eq('strava_id', String(athleteId))
     .limit(1);
+  if (bindingError) console.error('[TCU] strava_member_bindings error:', bindingError);
   if (!bindings || bindings.length === 0) return null;
   const { tcu_member_email, tcu_account } = bindings[0];
   let query = supabase
     .from('tcu_members')
-    .select('email, real_name, name, account, nickname, team, tcu_id, member_type, profile_photo, gender, birthday, nationality, phone, address, emergency_contact, emergency_phone, emergency_relation, self_introduction, self_intro, skills');
+    .select('email, name, account, nickname, team, tcu_id, member_type, profile_photo, gender, birthday, nationality, phone, address, emergency_contact, emergency_phone, emergency_relation, self_intro, skills');
   if (tcu_account) {
     query = query.eq('account', tcu_account);
   } else if (tcu_member_email) {
@@ -188,7 +187,8 @@ export async function getTCUMemberByStravaId(athleteId: number): Promise<TCUMemb
   } else {
     return null;
   }
-  const { data } = await query.limit(1);
+  const { data, error: memberError } = await query.limit(1);
+  if (memberError) console.error('[TCU] tcu_members error:', memberError);
   return data?.[0] ?? null;
 }
 
