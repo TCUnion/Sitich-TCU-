@@ -1070,6 +1070,7 @@ function ProfileScreen() {
   const mySegments = segments.filter(s => mySegmentIds.includes(s.id));
   const displayName = athlete ? `${athlete.firstname} ${athlete.lastname}` : '—';
   const displayAvatar = athlete?.profile_medium ?? athlete?.profile ?? MOCK_USER.avatar;
+  const tcuAvatarUrl = tcuMember?.tcu_id ? `https://www.tsu.com.tw/upload-files/avatars/${tcuMember.tcu_id}.jpg` : null;
   const locationStr = [athlete?.city, athlete?.country].filter(Boolean).join(', ');
 
   return (
@@ -1101,9 +1102,10 @@ function ProfileScreen() {
           {/* Real Strava profile picture centered on radar */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <img
-              src={displayAvatar}
+              src={tcuAvatarUrl ?? displayAvatar}
               alt={displayName}
               className="w-20 h-20 rounded-full border-2 border-primary object-cover shadow-xl"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = displayAvatar; }}
             />
           </div>
         </div>
