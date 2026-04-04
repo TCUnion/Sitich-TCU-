@@ -739,8 +739,9 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
         setRegisteredIds(prev => { const s = new Set(prev); s.delete(segmentId); return s; });
         showToast(`已取消報名：${segmentName}`);
       } else {
-        const name = `${athlete.firstname} ${athlete.lastname}`.trim();
-        await registerChallenge(athlete.id, name, segmentId);
+        const name = `${athlete.firstname} ${athlete.lastname}`.trim() || `athlete ${athlete.id}`;
+        const profile = athlete.profile_medium || athlete.profile || null;
+        await registerChallenge(athlete.id, name, segmentId, profile);
         setRegisteredIds(prev => new Set(prev).add(segmentId));
         showToast(`報名成功：${segmentName} 🎉`);
       }

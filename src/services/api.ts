@@ -67,9 +67,9 @@ export async function getUpcomingCyclingEvents(limit = 10): Promise<CyclingEvent
 /** 取得指定運動員的報名路段 ID 清單 */
 export async function getMyRegistrations(athleteId: number): Promise<number[]> {
   const { data } = await supabase
-    .from('challenge_registrations')
+    .from('registrations')
     .select('segment_id')
-    .eq('athlete_id', athleteId);
+    .eq('strava_athlete_id', athleteId);
   return (data ?? []).map(r => Number(r.segment_id));
 }
 
@@ -78,19 +78,31 @@ export async function registerChallenge(
   athleteId: number,
   athleteName: string,
   segmentId: number,
+  athleteProfile?: string | null,
+  team?: string,
+  tcuId?: string | null,
 ): Promise<void> {
   const { error } = await supabase
-    .from('challenge_registrations')
-    .upsert({ athlete_id: athleteId, athlete_name: athleteName, segment_id: segmentId });
+    .from('registrations')
+    .upsert({
+      id: crypto.randomUUID(),
+      strava_athlete_id: athleteId,
+      athlete_name: athleteName,
+      segment_id: segmentId,
+      athlete_profile: athleteProfile ?? null,
+      team: team ?? '',
+      tcu_id: tcuId ?? null,
+      status: 'approved',
+    });
   if (error) throw error;
 }
 
 /** 取消報名 */
 export async function unregisterChallenge(athleteId: number, segmentId: number): Promise<void> {
   const { error } = await supabase
-    .from('challenge_registrations')
+    .from('registrations')
     .delete()
-    .eq('athlete_id', athleteId)
+    .eq('strava_athlete_id', athleteId)
     .eq('segment_id', segmentId);
   if (error) throw error;
 }
