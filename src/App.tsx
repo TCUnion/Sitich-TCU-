@@ -405,7 +405,7 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
           <div className="text-center text-on-surface/50 py-8 text-sm">目前無進行中挑戰</div>
         )}
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="flex flex-col gap-3">
           {sorted.map(seg => {
             const daysRemaining = getDaysRemaining(seg.end_date);
             const isExpired = daysRemaining !== null && daysRemaining <= 0;
@@ -415,12 +415,12 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
               <button
                 key={seg.id}
                 onClick={() => onNavigate('race-detail', challenge)}
-                className={`relative w-full aspect-[4/3] rounded-2xl overflow-hidden text-left transition-all active:scale-[0.97] ${
+                className={`w-full bg-surface-container rounded-2xl overflow-hidden flex items-center gap-3 p-3 text-left transition-all active:scale-[0.98] border border-surface-container-highest/40 ${
                   isExpired ? 'opacity-40 grayscale' : 'card-glow'
                 }`}
               >
-                {/* 背景：地圖 or og_image */}
-                <div className="absolute inset-0">
+                {/* 左側縮圖 */}
+                <div className="w-[72px] h-[72px] rounded-xl overflow-hidden shrink-0">
                   {seg.polyline ? (
                     <MapThumbnail encoded={seg.polyline} />
                   ) : seg.og_image ? (
@@ -430,41 +430,46 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
                   )}
                 </div>
 
-                {/* 漸層遮罩 */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                {/* 中間資訊 */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  {/* 標籤列 */}
+                  <div className="flex items-center gap-1.5">
+                    {isExpired ? (
+                      <span className="text-[9px] font-bold text-white/60 bg-white/10 px-2 py-0.5 rounded-full">
+                        已結束
+                      </span>
+                    ) : daysRemaining !== null ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full text-emerald-300 bg-emerald-900/40 shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                        <Clock size={8} />
+                        {daysRemaining}天
+                      </span>
+                    ) : null}
+                    {!isExpired && seg.team && (
+                      <span className="text-[9px] font-bold text-white bg-[#FC5200]/80 px-1.5 py-0.5 rounded-full">
+                        {seg.team}
+                      </span>
+                    )}
+                  </div>
 
-                {/* 頂部標籤 */}
-                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                  {isExpired ? (
-                    <span className="text-[10px] font-bold text-white/70 bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                      已結束
+                  {/* 標題 */}
+                  <h3 className="text-[13px] font-bold leading-snug truncate">
+                    {seg.description || seg.name}
+                  </h3>
+
+                  {/* 距離 · 坡度 */}
+                  <div className="flex items-center gap-1 text-[11px] text-on-surface-variant">
+                    <Clock size={10} className="shrink-0" />
+                    <span>
+                      {seg.distance ? `${(seg.distance / 1000).toFixed(1)} km` : '—'}
+                      {' · '}
+                      {seg.average_grade ? `${seg.average_grade.toFixed(1)}%` : '—'}
                     </span>
-                  ) : daysRemaining !== null ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full text-emerald-300 bg-black/50 backdrop-blur-sm shadow-[0_0_10px_rgba(16,185,129,0.5)]">
-                      <Clock size={9} />
-                      {daysRemaining}天
-                    </span>
-                  ) : null}
-                  {!isExpired && seg.team && (
-                    <span className="text-[9px] font-bold text-white bg-[#FC5200]/80 px-1.5 py-0.5 rounded-full">
-                      {seg.team}
-                    </span>
-                  )}
+                  </div>
                 </div>
 
-                {/* 底部資訊 */}
-                <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 flex items-end justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-bold text-[14px] leading-snug truncate drop-shadow-sm">
-                      {seg.description || seg.name}
-                    </h3>
-                    <p className="text-white/55 text-[11px] mt-0.5">
-                      {seg.distance ? `${(seg.distance / 1000).toFixed(1)} km` : '—'} · {seg.average_grade ? `${seg.average_grade.toFixed(1)}%` : '—'}
-                    </p>
-                  </div>
-                  <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full backdrop-blur-sm ${isExpired ? 'bg-white/10' : 'bg-[#FC5200]/80'}`}>
-                    <ChevronRight size={14} className="text-white" />
-                  </div>
+                {/* 右側按鈕 */}
+                <div className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-full ${isExpired ? 'bg-white/10' : 'bg-[#FC5200]'}`}>
+                  <Plus size={14} className="text-white" />
                 </div>
               </button>
             );
