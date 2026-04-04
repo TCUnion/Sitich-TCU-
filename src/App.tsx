@@ -31,13 +31,18 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  UserCheck
+  UserCheck,
+  Settings,
+  Share2,
+  Image as ImageIcon,
+  Save,
+  X,
 } from 'lucide-react';
 
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -163,7 +168,12 @@ export default function App() {
           )}
           {currentScreen === 'profile' && (
             <motion.div key="profile">
-              <ProfileScreen />
+              <ProfileScreen onNavigate={navigateTo} />
+            </motion.div>
+          )}
+          {currentScreen === 'admin' && (
+            <motion.div key="admin">
+              <AdminScreen onNavigate={navigateTo} />
             </motion.div>
           )}
           {currentScreen === 'race-detail' && selectedChallenge && (
@@ -1059,8 +1069,11 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
   );
 }
 
-function ProfileScreen() {
+const ADMIN_ATHLETE_IDS = (import.meta.env.VITE_ADMIN_ATHLETE_IDS ?? '').split(',').map((s: string) => Number(s.trim())).filter(Boolean);
+
+function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
   const { athlete } = useAuth();
+  const isAdmin = athlete ? ADMIN_ATHLETE_IDS.includes(athlete.id) : false;
   const { segments } = useSegmentData();
   const [mySegmentIds, setMySegmentIds] = useState<number[]>([]);
   const [myTimesMap, setMyTimesMap] = useState<Map<number, number>>(new Map());
@@ -1477,6 +1490,17 @@ function ProfileScreen() {
             </a>
           </div>
         )}
+        {isAdmin && (
+          <div className="mt-6">
+            <button
+              onClick={() => onNavigate('admin')}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-white/10 bg-surface-container text-on-surface-variant text-xs hover:bg-surface-container-high transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              後台管理
+            </button>
+          </div>
+        )}
       </section>
     </motion.div>
   );
@@ -1497,6 +1521,34 @@ function ProfileItem({ label, value, icon }: { label: string, value: string, ico
 function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onNavigate: (screen: Screen) => void }) {
   const { accessToken, athlete, isLoggedIn } = useAuth();
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [shareToast, setShareToast] = useState<string | null>(null);
+
+  // 動態更新 OG meta tags
+  useEffect(() => {
+    const title = `${challenge.title} | TCU CHALLENGE`;
+    document.title = title;
+    const setMeta = (property: string, content: string) => {
+      let el = document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`);
+      if (!el) { el = document.createElement('meta'); el.setAttribute('property', property); document.head.appendChild(el); }
+      el.setAttribute('content', content);
+    };
+    setMeta('og:title', title);
+    setMeta('og:description', challenge.reward || 'TCU 自行車挑戰賽');
+    if (challenge.image) setMeta('og:image', challenge.image);
+    return () => { document.title = 'TCU CHALLENGE'; };
+  }, [challenge]);
+
+  async function handleShare() {
+    const url = window.location.href;
+    const shareData = { title: challenge.title, text: `挑戰 ${challenge.title}｜${challenge.distance}`, url };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url);
+      setShareToast('連結已複製！');
+      setTimeout(() => setShareToast(null), 2500);
+    }
+  }
 
   useEffect(() => {
     if (!challenge.stravaId) return;
@@ -1532,6 +1584,13 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
       exit={{ opacity: 0 }}
       className="pb-32"
     >
+      {/* Share Toast */}
+      {shareToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-surface-container-high text-on-surface text-xs font-medium px-4 py-2 rounded-full shadow-lg border border-white/10">
+          {shareToast}
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="relative h-[400px] w-full overflow-hidden">
         <img
@@ -1540,6 +1599,14 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
           className="w-full h-full object-cover grayscale-[0.3] brightness-[0.7]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
+        {/* Share button */}
+        <button
+          onClick={handleShare}
+          className="absolute top-14 right-4 bg-black/30 backdrop-blur-sm text-white p-2.5 rounded-full border border-white/20 hover:bg-black/50 transition-colors"
+          aria-label="分享"
+        >
+          <Share2 className="w-4 h-4" />
+        </button>
         <div className="absolute bottom-8 left-6 right-6">
           {challenge.status === 'hot' && (
             <div className="inline-flex items-center gap-2 bg-tertiary px-3 py-1 rounded-sm mb-4 shadow-lg">
@@ -1665,5 +1732,146 @@ function RuleItem({ icon, title, desc }: { icon: React.ReactNode, title: string,
         <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">{desc}</p>
       </div>
     </div>
+  );
+}
+
+function AdminScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
+  const { segments } = useSegmentData();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [ogImage, setOgImage] = useState('');
+  const [raceDesc, setRaceDesc] = useState('');
+  const [teamName, setTeamName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  const selected = segments.find(s => s.id === selectedId);
+
+  function handleSelect(seg: StravaSegment) {
+    setSelectedId(seg.id);
+    setOgImage(seg.og_image ?? '');
+    setRaceDesc(seg.race_description ?? '');
+    setTeamName(seg.team ?? '');
+    setSaveMsg(null);
+  }
+
+  async function handleSave() {
+    if (!selectedId) return;
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      await upsertSegmentMetadata(selectedId, {
+        og_image: ogImage || undefined,
+        race_description: raceDesc || undefined,
+        team_name: teamName || undefined,
+      });
+      setSaveMsg('儲存成功 ✓');
+    } catch {
+      setSaveMsg('儲存失敗，請再試一次');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pb-32">
+      {/* Header */}
+      <div className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-white/5 flex items-center gap-3 px-4 py-4">
+        <button onClick={() => onNavigate('profile')} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <h1 className="font-headline italic-bold text-lg uppercase tracking-tight">後台管理</h1>
+      </div>
+
+      <div className="px-4 mt-6 space-y-6">
+        {/* Segment selector */}
+        <div>
+          <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mb-3">選擇路段</p>
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {segments.map(seg => (
+              <button
+                key={seg.id}
+                onClick={() => handleSelect(seg)}
+                className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-colors ${
+                  selectedId === seg.id
+                    ? 'bg-primary/15 border-primary/40 text-on-surface'
+                    : 'bg-surface-container border-white/5 text-on-surface-variant hover:bg-surface-container-high'
+                }`}
+              >
+                <span className="font-medium">{seg.name}</span>
+                {seg.team && <span className="text-[10px] ml-2 text-on-surface-variant">{seg.team}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Edit form */}
+        {selected && (
+          <div className="space-y-4">
+            <div className="h-px bg-white/5" />
+            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">編輯：{selected.name}</p>
+
+            {/* OG Image URL */}
+            <div>
+              <label className="flex items-center gap-1.5 text-[10px] text-on-surface-variant uppercase tracking-widest mb-2">
+                <ImageIcon className="w-3 h-3" />
+                活動圖片 URL（og:image）
+              </label>
+              <input
+                type="url"
+                value={ogImage}
+                onChange={e => setOgImage(e.target.value)}
+                placeholder="https://example.com/image.jpg"
+                className="w-full bg-surface-container rounded-xl px-4 py-3 text-sm border border-white/10 focus:outline-none focus:border-primary/50 placeholder-on-surface-variant/40"
+              />
+              {ogImage && (
+                <div className="mt-2 rounded-xl overflow-hidden border border-white/10 h-32">
+                  <img src={ogImage} alt="og preview" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                </div>
+              )}
+            </div>
+
+            {/* Team Name */}
+            <div>
+              <label className="text-[10px] text-on-surface-variant uppercase tracking-widest mb-2 block">車隊名稱</label>
+              <input
+                type="text"
+                value={teamName}
+                onChange={e => setTeamName(e.target.value)}
+                placeholder="TCU ELITE"
+                className="w-full bg-surface-container rounded-xl px-4 py-3 text-sm border border-white/10 focus:outline-none focus:border-primary/50 placeholder-on-surface-variant/40"
+              />
+            </div>
+
+            {/* Race Description */}
+            <div>
+              <label className="text-[10px] text-on-surface-variant uppercase tracking-widest mb-2 block">賽事說明</label>
+              <textarea
+                value={raceDesc}
+                onChange={e => setRaceDesc(e.target.value)}
+                placeholder="賽事簡介、規則、注意事項…"
+                rows={5}
+                className="w-full bg-surface-container rounded-xl px-4 py-3 text-sm border border-white/10 focus:outline-none focus:border-primary/50 placeholder-on-surface-variant/40 resize-none"
+              />
+            </div>
+
+            {/* Save */}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full bg-primary text-on-primary py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-all"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? '儲存中…' : '儲存'}
+            </button>
+
+            {saveMsg && (
+              <p className={`text-center text-xs ${saveMsg.includes('成功') ? 'text-secondary' : 'text-error'}`}>
+                {saveMsg}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }

@@ -315,6 +315,17 @@ export async function clearMemberOtp(email: string): Promise<void> {
     .eq('email', email);
 }
 
+/** 更新或插入路段元資料（og_image、race_description、team_name） */
+export async function upsertSegmentMetadata(
+  segmentId: number,
+  fields: { og_image?: string; race_description?: string; team_name?: string },
+): Promise<void> {
+  const { error } = await supabase
+    .from('segment_metadata')
+    .upsert({ segment_id: segmentId, ...fields }, { onConflict: 'segment_id' });
+  if (error) throw error;
+}
+
 /** 取得官方賽事（published，日期倒序） */
 export async function getOfficialEvents(limit = 5): Promise<OfficialEvent[]> {
   const { data, error } = await supabase
