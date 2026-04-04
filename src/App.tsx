@@ -33,7 +33,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard } from './services/api';
+import { getLeaderboard, getUpcomingCyclingEvents, CyclingEvent } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -272,7 +272,7 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
             active={currentScreen === 'register'}
             onClick={() => onNavigate('register')}
             icon={<ClipboardCheck className="w-6 h-6" />}
-            label="註冊"
+            label="報名"
           />
           <NavButton
             active={currentScreen === 'profile'}
@@ -711,8 +711,24 @@ function ChallengerRow({ rank, name, profile, time, isUser }: { rank: string, na
 }
 
 function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
+  const [events, setEvents] = useState<CyclingEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    getUpcomingCyclingEvents(20).then(data => {
+      setEvents(data);
+      setIsLoading(false);
+    });
+  }, []);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const ongoing = events.filter(ev => ev.date === today);
+  const upcoming = events.filter(ev => ev.date > today);
+
+  const FALLBACK_IMG = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80';
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 1.05 }}
@@ -726,31 +742,47 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
       {/* Carousel */}
       <section className="relative">
         <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-4 px-6 pb-4">
-          {CHALLENGES.map(challenge => (
-            <div 
-              key={challenge.id}
-              onClick={() => onNavigate('race-detail', challenge)}
+          {isLoading ? (
+            <div className="min-w-[85vw] snap-center h-80 rounded-2xl bg-surface-container-low animate-pulse" />
+          ) : events.length === 0 ? (
+            <div className="min-w-[85vw] snap-center flex items-center justify-center h-48 rounded-2xl bg-surface-container-low text-on-surface-variant text-sm">
+              目前無即將舉行的活動
+            </div>
+          ) : events.map(ev => (
+            <div
+              key={ev.id}
               className="min-w-[85vw] snap-center relative overflow-hidden rounded-2xl bg-surface-container-low shadow-2xl group cursor-pointer"
             >
-              <div className={`absolute top-0 left-0 w-1.5 h-full z-10 ${challenge.status === 'hot' ? 'bg-secondary' : 'bg-tertiary'}`} />
+              <div className="absolute top-0 left-0 w-1.5 h-full z-10 bg-secondary" />
               <div className="h-64 w-full relative">
-                <img src={challenge.image} alt={challenge.title} className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" />
+                <img
+                  src={ev.cover_image || FALLBACK_IMG}
+                  alt={ev.title}
+                  className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
-                {challenge.status === 'hot' && (
+                {ev.tags?.includes('熱門') && (
                   <div className="absolute top-4 right-4 bg-tertiary text-white text-[10px] italic-bold px-3 py-1 rounded-full uppercase tracking-widest">熱門</div>
                 )}
               </div>
               <div className="p-6 -mt-16 relative z-10 glass-panel mx-2 rounded-xl mb-4 shadow-xl border border-white/5">
-                <h2 className="italic-bold font-headline text-2xl mb-4 text-white uppercase">{challenge.title}</h2>
+                <h2 className="italic-bold font-headline text-2xl mb-4 text-white uppercase">{ev.title}</h2>
                 <div className="flex justify-between items-center mb-6">
                   <div className="flex flex-col">
                     <span className="text-on-surface-variant text-[10px] uppercase tracking-widest">距離</span>
-                    <span className="italic-bold font-headline text-2xl text-primary">{challenge.distance}</span>
+                    <span className="italic-bold font-headline text-2xl text-primary">{ev.distance} km</span>
                   </div>
                   <div className="flex flex-col text-right">
                     <span className="text-on-surface-variant text-[10px] uppercase tracking-widest">爬升</span>
-                    <span className="italic-bold font-headline text-2xl text-white">{challenge.elevation}</span>
+                    <span className="italic-bold font-headline text-2xl text-white">{ev.elevation} m</span>
                   </div>
+                </div>
+                <div className="flex items-center gap-2 text-on-surface-variant text-xs mb-4">
+                  <MapPin className="w-3 h-3 shrink-0" />
+                  <span>{ev.region || '—'}</span>
+                  <span className="mx-1">·</span>
+                  <Clock className="w-3 h-3 shrink-0" />
+                  <span>{ev.date} {ev.time || ''}</span>
                 </div>
                 <button className="w-full bg-primary text-on-primary py-4 rounded-xl italic-bold font-headline uppercase tracking-widest active:scale-[0.98] transition-all flex justify-center items-center gap-2 shadow-lg shadow-primary/20">
                   查看詳情
@@ -764,48 +796,71 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
 
       {/* All Events List */}
       <section className="px-6 space-y-8">
-        <h3 className="italic-bold font-headline text-xl text-white uppercase tracking-widest">所有賽事 <span className="text-xs text-on-surface-variant font-normal">ALL EVENTS</span></h3>
-        
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-              <span className="text-sm font-bold text-secondary uppercase tracking-wider">進行中 (Ongoing)</span>
-            </div>
-            <div className="bg-surface-container-high rounded-2xl p-5 border-l-4 border-secondary shadow-lg">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">LIVE</div>
-                  <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">Taichung Urban Dash</h4>
-                  <p className="text-on-surface-variant text-[10px] mt-1">2024.08.10 - 2024.08.15</p>
-                </div>
-                <div className="text-right">
-                  <div className="italic-bold font-headline text-primary text-xl">30 KM</div>
-                  <div className="text-[10px] text-on-surface-variant">45 M ELEV</div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <h3 className="italic-bold font-headline text-xl text-white uppercase tracking-widest">
+          所有賽事 <span className="text-xs text-on-surface-variant font-normal">ALL EVENTS</span>
+        </h3>
 
+        {isLoading ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-tertiary" />
-              <span className="text-sm font-bold text-tertiary uppercase tracking-wider">待報名 (Open for Registration)</span>
-            </div>
-            <div className="bg-surface-container-high rounded-2xl p-5 border-l-4 border-tertiary shadow-lg">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">Central Mountain Challenge</h4>
-                  <p className="text-primary text-[10px] font-bold mt-1">報名中：即日起 - 10.01</p>
-                </div>
-                <div className="text-right">
-                  <div className="italic-bold font-headline text-primary text-xl">160 KM</div>
-                  <div className="text-[10px] text-on-surface-variant uppercase">2,100 M ELEV</div>
-                </div>
-              </div>
-            </div>
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-20 rounded-2xl bg-surface-container-high animate-pulse" />
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="space-y-6">
+            {ongoing.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                  <span className="text-sm font-bold text-secondary uppercase tracking-wider">進行中 (Ongoing)</span>
+                </div>
+                {ongoing.map(ev => (
+                  <div key={ev.id} className="bg-surface-container-high rounded-2xl p-5 border-l-4 border-secondary shadow-lg">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">LIVE</div>
+                        <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{ev.title}</h4>
+                        <p className="text-on-surface-variant text-[10px] mt-1">{ev.date} {ev.time || ''} · {ev.region}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="italic-bold font-headline text-primary text-xl">{ev.distance} KM</div>
+                        <div className="text-[10px] text-on-surface-variant">{ev.elevation} M ELEV</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {upcoming.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-tertiary" />
+                  <span className="text-sm font-bold text-tertiary uppercase tracking-wider">待報名 (Open for Registration)</span>
+                </div>
+                {upcoming.map(ev => (
+                  <div key={ev.id} className="bg-surface-container-high rounded-2xl p-5 border-l-4 border-tertiary shadow-lg">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{ev.title}</h4>
+                        <p className="text-primary text-[10px] font-bold mt-1">報名中 · {ev.date} {ev.time || ''}</p>
+                        {ev.region && <p className="text-on-surface-variant text-[10px]">{ev.region}</p>}
+                      </div>
+                      <div className="text-right">
+                        <div className="italic-bold font-headline text-primary text-xl">{ev.distance} KM</div>
+                        <div className="text-[10px] text-on-surface-variant uppercase">{ev.elevation} M ELEV</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {ongoing.length === 0 && upcoming.length === 0 && (
+              <p className="text-on-surface-variant text-sm text-center py-8">目前無活動資料</p>
+            )}
+          </div>
+        )}
 
         {/* Help Section */}
         <section className="bg-surface-container rounded-2xl p-6 flex items-center justify-between shadow-xl border border-white/5">
@@ -1016,9 +1071,9 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
     >
       {/* Hero Section */}
       <section className="relative h-[400px] w-full overflow-hidden">
-        <img 
-          src={challenge.image} 
-          alt={challenge.title} 
+        <img
+          src={challenge.image || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'}
+          alt={challenge.title}
           className="w-full h-full object-cover grayscale-[0.4] brightness-[0.6]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
