@@ -623,25 +623,44 @@ function RankingScreen() {
       exit={{ opacity: 0, x: -20 }}
       className="px-4"
     >
-      {/* 路段選擇器 */}
-      <section className="mb-6 -mx-4 px-4 overflow-x-auto hide-scrollbar flex gap-2 py-1">
-        {segments.map(seg => {
-          const active = selectedSeg?.id === seg.id;
-          return (
-            <button
-              key={seg.id}
-              onClick={() => setSelectedSeg(seg)}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                active
-                  ? 'bg-primary text-on-primary shadow-lg shadow-primary/20'
-                  : 'bg-surface-container text-on-surface-variant border border-outline/20'
-              }`}
-            >
-              {seg.description || seg.name}
-            </button>
-          );
-        })}
-      </section>
+      {/* 路段選擇器：進行中 / 歷史挑戰 */}
+      {(() => {
+        const activeSegs = segments.filter(s => { const d = getDaysRemaining(s.end_date); return d === null || d > 0; });
+        const pastSegs   = segments.filter(s => { const d = getDaysRemaining(s.end_date); return d !== null && d <= 0; });
+        const TabBtn = ({ seg }: { seg: typeof segments[0] }) => (
+          <button
+            key={seg.id}
+            onClick={() => setSelectedSeg(seg)}
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+              selectedSeg?.id === seg.id
+                ? 'bg-primary text-on-primary shadow-lg shadow-primary/20'
+                : 'bg-surface-container text-on-surface-variant border border-outline/20'
+            }`}
+          >
+            {seg.description || seg.name}
+          </button>
+        );
+        return (
+          <div className="mb-6 space-y-3">
+            {activeSegs.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary mb-2 px-1">進行中</p>
+                <div className="-mx-4 px-4 overflow-x-auto hide-scrollbar flex gap-2 py-1">
+                  {activeSegs.map(seg => <TabBtn key={seg.id} seg={seg} />)}
+                </div>
+              </div>
+            )}
+            {pastSegs.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 mb-2 px-1">歷史挑戰</p>
+                <div className="-mx-4 px-4 overflow-x-auto hide-scrollbar flex gap-2 py-1">
+                  {pastSegs.map(seg => <TabBtn key={seg.id} seg={seg} />)}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 未登入提示 */}
       {!isLoggedIn && (
