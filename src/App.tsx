@@ -1172,7 +1172,7 @@ function ProfileScreen() {
       {/* Header: Radar Chart + Profile Picture */}
       <section className="relative flex flex-col items-center mb-10">
         <div className="relative w-72 h-72 flex items-center justify-center">
-          <svg className="w-full h-full" viewBox="0 0 200 200">
+          <svg className="w-full h-full" viewBox="0 0 200 200" overflow="visible">
             <path className="text-outline-variant" d="M 100 20 L 180 100 L 100 180 L 20 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
             <path className="text-outline-variant" d="M 100 40 L 160 100 L 100 160 L 40 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
             <path className="text-outline-variant" d="M 100 60 L 140 100 L 100 140 L 60 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
@@ -1183,10 +1183,10 @@ function ProfileScreen() {
             <circle cx="172" cy="100" fill="#38af46" r="3" />
             <circle cx="100" cy="164" fill="#38af46" r="3" />
             <circle cx="44" cy="100" fill="#38af46" r="3" />
-            <text className="font-bold" fill="white" fontSize="10" textAnchor="start" x="183" y="103">公路</text>
-            <text className="font-bold" fill="white" fontSize="10" textAnchor="middle" x="100" y="198">登山</text>
-            <text className="font-bold" fill="white" fontSize="10" textAnchor="end" x="17" y="103">繞圈</text>
-            <text className="font-bold" fill="white" fontSize="10" textAnchor="middle" x="100" y="13">計時</text>
+            <text fill="white" fontSize="10" fontWeight="bold" textAnchor="start" x="185" y="104">公路</text>
+            <text fill="white" fontSize="10" fontWeight="bold" textAnchor="middle" x="100" y="212">登山</text>
+            <text fill="white" fontSize="10" fontWeight="bold" textAnchor="end" x="15" y="104">繞圈</text>
+            <text fill="white" fontSize="10" fontWeight="bold" textAnchor="middle" x="100" y="10">計時</text>
           </svg>
           {/* Real Strava profile picture centered on radar */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
