@@ -31,6 +31,21 @@ Google Stitch 生成的前端介面，整合 Gemini AI。功能包含：
 | AI | Google Gemini API (`@google/genai`) |
 | 圖示 | lucide-react |
 | 後端 | Express（輕量 proxy） |
+| 資料庫 | Supabase（PostgreSQL）|
+| 認證 | Strava OAuth（popup + postMessage）|
+
+## 模組導覽
+
+| 模組 | 路徑 | 職責 |
+|------|------|------|
+| 主元件 | `src/App.tsx` | 畫面路由、Layout、底部導覽、所有 Screen 元件 |
+| 型別定義 | `src/types.ts` | `Screen`、`Challenge`、`User` 型別 |
+| 進入點 | `src/main.tsx` | ReactDOM 掛載 |
+| 全域樣式 | `src/index.css` | Tailwind 全域設定 |
+| API 服務層 | `src/services/api.ts` | Supabase client、REST API 呼叫 |
+| 認證 Hook | `src/hooks/useAuth.ts` | Strava OAuth 狀態（postMessage + localStorage）|
+| 路段資料 Hook | `src/hooks/useSegmentData.ts` | 3 張表合併查詢（segments_new、team_races、segment_metadata）|
+| 地圖縮圖元件 | `src/components/MapThumbnail.tsx` | Canvas 地圖（CartoDB tiles + Google polyline decode）|
 
 ## 環境設定
 
@@ -50,15 +65,51 @@ npm run dev   # → http://localhost:3000
 
 ```
 src/
-  App.tsx              # 主元件（所有畫面邏輯 + LoginScreen）
-  types.ts             # TypeScript 型別定義
-  main.tsx             # 進入點
-  index.css            # 全域樣式
-  services/api.ts      # API 呼叫（service.criterium.tw）
-  hooks/useAuth.ts     # Strava auth 狀態管理（postMessage + localStorage）
+  App.tsx                          # 主元件（所有畫面邏輯 + LoginScreen）
+  types.ts                         # TypeScript 型別定義
+  main.tsx                         # 進入點
+  index.css                        # 全域樣式
+  services/
+    api.ts                         # Supabase client + REST API 呼叫
+  hooks/
+    useAuth.ts                     # Strava auth 狀態管理（postMessage + localStorage）
+    useSegmentData.ts              # 路段資料查詢（3 表合併）
+  components/
+    MapThumbnail.tsx               # 靜態地圖縮圖（CartoDB tiles + polyline）
 index.html
 vite.config.ts
-metadata.json          # 專案名稱與 Gemini 權限設定
+metadata.json                      # 專案名稱與 Gemini 權限設定
+```
+
+### 檔案結構圖（Mermaid）
+
+```mermaid
+graph TD
+  App["App.tsx<br/>主元件 + 所有 Screen"]
+  Types["types.ts<br/>Screen / Challenge / User"]
+  Main["main.tsx<br/>ReactDOM 進入點"]
+  CSS["index.css<br/>Tailwind 全域樣式"]
+
+  subgraph services["services/"]
+    API["api.ts<br/>Supabase client<br/>openStravaAuth()<br/>getLeaderboard()<br/>getUpcomingCyclingEvents()<br/>getOfficialEvents()"]
+  end
+
+  subgraph hooks["hooks/"]
+    UseAuth["useAuth.ts<br/>AthleteInfo<br/>postMessage listener<br/>localStorage 持久化"]
+    UseSegment["useSegmentData.ts<br/>3-table merge<br/>segments_new<br/>team_races<br/>segment_metadata"]
+  end
+
+  subgraph components["components/"]
+    Map["MapThumbnail.tsx<br/>decodePolyline()<br/>CartoDB dark_all tiles<br/>Web Mercator 投影<br/>SVG polyline 疊加"]
+  end
+
+  App --> Types
+  App --> UseAuth
+  App --> UseSegment
+  App --> Map
+  UseAuth --> API
+  UseSegment --> API
+  Main --> App
 ```
 
 ## 會話規則
@@ -88,6 +139,58 @@ metadata.json          # 專案名稱與 Gemini 權限設定
 - **TCU小幫手**：`/Volumes/OWC 2T/ClaudeCode/TCU小幫手`（主平台，React + FastAPI）
 - **TCULineDB**：`/Volumes/OWC 2T/ClaudeCode/TCULineDB`（會員資料庫）
 
+## 資料流
+
+### Strava 認證流程
+
+```
+使用者點擊登入
+  → openStravaAuth()：開啟 popup 至 service.criterium.tw/webhook/strava/auth/start
+  → Strava OAuth 授權
+  → n8n webhook 回傳 postMessage({ type: 'STRAVA_AUTH_SUCCESS', access_token, athlete })
+  → useAuth.ts handleMessage：更新 state + 寫入 localStorage
+  → App.tsx useEffect：切換至 explore 畫面
+```
+
+### Supabase 3-Table Merge 架構
+
+`useSegmentData.ts` 並行查詢三張表後合併：
+
+```
+segments_new        → 路段主資料（strava_id, polyline, name, distance…）
+team_races          → 隊伍賽事覆寫（team_name, name, og_image per segment）
+segment_metadata    → 延伸元資料（race_description, og_image, team_name）
+```
+
+合併優先序（高 → 低）：`segment_metadata` > `team_races` > `segments_new`
+
+### API 端點
+
+| 端點 | 說明 |
+|------|------|
+| `service.criterium.tw/webhook/strava/auth/start` | Strava OAuth 啟動（n8n） |
+| `service.criterium.tw/api/leaderboard/:segmentId` | 路段排行榜（需 Bearer token） |
+| Supabase `cycling_events` | 近期約騎活動 |
+| Supabase `events` | 官方賽事（published） |
+| Supabase `segments_new` | Strava 路段主資料 |
+| Supabase `team_races` | 隊伍賽事資訊 |
+| Supabase `segment_metadata` | 路段延伸元資料 |
+
+## 畫面清單
+
+| Screen 名稱 | 路由值 | 說明 |
+|-------------|--------|------|
+| LoginScreen | `login` | Strava 登入頁（未登入直接瀏覽時顯示） |
+| ExploreScreen | `explore` | 首頁探索（挑戰賽列表） |
+| RankingScreen | `ranking` | 排行榜 |
+| RegisterScreen | `register` | 賽事報名 |
+| ProfileScreen | `profile` | 個人資料 |
+| RaceDetailScreen | `race-detail` | 賽事詳情（需 `selectedChallenge`） |
+
 ## 檔案保護
 
 **禁止刪除任何檔案**，除非明確說「請刪掉 [檔案名稱]」。
+
+---
+
+> 最後由 Claude Code 更新：2026-04-04
