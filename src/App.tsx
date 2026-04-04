@@ -33,7 +33,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getUpcomingCyclingEvents, CyclingEvent } from './services/api';
+import { getLeaderboard } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -711,19 +711,22 @@ function ChallengerRow({ rank, name, profile, time, isUser }: { rank: string, na
 }
 
 function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
-  const [events, setEvents] = useState<CyclingEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { segments, isLoading } = useSegmentData();
 
-  useEffect(() => {
-    getUpcomingCyclingEvents(20).then(data => {
-      setEvents(data);
-      setIsLoading(false);
-    });
-  }, []);
+  const sorted = [...segments].sort((a, b) => {
+    const dA = getDaysRemaining(a.end_date) ?? 999;
+    const dB = getDaysRemaining(b.end_date) ?? 999;
+    return dB - dA;
+  });
 
-  const today = new Date().toISOString().slice(0, 10);
-  const ongoing = events.filter(ev => ev.date === today);
-  const upcoming = events.filter(ev => ev.date > today);
+  const active = sorted.filter(s => {
+    const d = getDaysRemaining(s.end_date);
+    return d === null || d > 0;
+  });
+  const expired = sorted.filter(s => {
+    const d = getDaysRemaining(s.end_date);
+    return d !== null && d <= 0;
+  });
 
   const FALLBACK_IMG = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80';
 
@@ -739,65 +742,73 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
         <p className="text-on-surface-variant text-sm mt-1 font-medium">UPCOMING EVENTS</p>
       </header>
 
-      {/* Carousel */}
+      {/* Carousel — active segments */}
       <section className="relative">
         <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-4 px-6 pb-4">
           {isLoading ? (
             <div className="min-w-[85vw] snap-center h-80 rounded-2xl bg-surface-container-low animate-pulse" />
-          ) : events.length === 0 ? (
+          ) : active.length === 0 ? (
             <div className="min-w-[85vw] snap-center flex items-center justify-center h-48 rounded-2xl bg-surface-container-low text-on-surface-variant text-sm">
-              目前無即將舉行的活動
+              目前無進行中挑戰
             </div>
-          ) : events.map(ev => (
-            <div
-              key={ev.id}
-              className="min-w-[85vw] snap-center relative overflow-hidden rounded-2xl bg-surface-container-low shadow-2xl group cursor-pointer"
-            >
-              <div className="absolute top-0 left-0 w-1.5 h-full z-10 bg-secondary" />
-              <div className="h-64 w-full relative">
-                <img
-                  src={ev.cover_image || FALLBACK_IMG}
-                  alt={ev.title}
-                  className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
-                {ev.tags?.includes('熱門') && (
-                  <div className="absolute top-4 right-4 bg-tertiary text-white text-[10px] italic-bold px-3 py-1 rounded-full uppercase tracking-widest">熱門</div>
-                )}
-              </div>
-              <div className="p-6 -mt-16 relative z-10 glass-panel mx-2 rounded-xl mb-4 shadow-xl border border-white/5">
-                <h2 className="italic-bold font-headline text-2xl mb-4 text-white uppercase">{ev.title}</h2>
-                <div className="flex justify-between items-center mb-6">
-                  <div className="flex flex-col">
-                    <span className="text-on-surface-variant text-[10px] uppercase tracking-widest">距離</span>
-                    <span className="italic-bold font-headline text-2xl text-primary">{ev.distance} km</span>
-                  </div>
-                  <div className="flex flex-col text-right">
-                    <span className="text-on-surface-variant text-[10px] uppercase tracking-widest">爬升</span>
-                    <span className="italic-bold font-headline text-2xl text-white">{ev.elevation} m</span>
-                  </div>
+          ) : active.map(seg => {
+            const challenge = segmentToChallenge(seg);
+            const daysLeft = getDaysRemaining(seg.end_date);
+            return (
+              <div
+                key={seg.id}
+                onClick={() => onNavigate('race-detail', challenge)}
+                className="min-w-[85vw] snap-center relative overflow-hidden rounded-2xl bg-surface-container-low shadow-2xl group cursor-pointer"
+              >
+                <div className="absolute top-0 left-0 w-1.5 h-full z-10 bg-secondary" />
+                <div className="h-64 w-full relative">
+                  {seg.polyline ? (
+                    <MapThumbnail encoded={seg.polyline} />
+                  ) : (
+                    <img
+                      src={seg.og_image || FALLBACK_IMG}
+                      alt={seg.name}
+                      className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
+                  {daysLeft !== null && daysLeft > 0 && (
+                    <div className="absolute top-4 right-4 bg-secondary text-white text-[10px] italic-bold px-3 py-1 rounded-full uppercase tracking-widest">{daysLeft} 天</div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 text-on-surface-variant text-xs mb-4">
-                  <MapPin className="w-3 h-3 shrink-0" />
-                  <span>{ev.region || '—'}</span>
-                  <span className="mx-1">·</span>
-                  <Clock className="w-3 h-3 shrink-0" />
-                  <span>{ev.date} {ev.time || ''}</span>
+                <div className="p-6 -mt-16 relative z-10 glass-panel mx-2 rounded-xl mb-4 shadow-xl border border-white/5">
+                  <h2 className="italic-bold font-headline text-2xl mb-4 text-white uppercase">{seg.description || seg.name}</h2>
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant text-[10px] uppercase tracking-widest">距離</span>
+                      <span className="italic-bold font-headline text-2xl text-primary">{challenge.distance}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-on-surface-variant text-[10px] uppercase tracking-widest">坡度</span>
+                      <span className="italic-bold font-headline text-2xl text-white">{challenge.elevation}</span>
+                    </div>
+                  </div>
+                  {seg.end_date && (
+                    <div className="flex items-center gap-2 text-on-surface-variant text-xs mb-4">
+                      <Clock className="w-3 h-3 shrink-0" />
+                      <span>截止：{seg.end_date}</span>
+                    </div>
+                  )}
+                  <button className="w-full bg-primary text-on-primary py-4 rounded-xl italic-bold font-headline uppercase tracking-widest active:scale-[0.98] transition-all flex justify-center items-center gap-2 shadow-lg shadow-primary/20">
+                    查看詳情
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
                 </div>
-                <button className="w-full bg-primary text-on-primary py-4 rounded-xl italic-bold font-headline uppercase tracking-widest active:scale-[0.98] transition-all flex justify-center items-center gap-2 shadow-lg shadow-primary/20">
-                  查看詳情
-                  <ChevronRight className="w-5 h-5" />
-                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
-      {/* All Events List */}
+      {/* All Segments List */}
       <section className="px-6 space-y-8">
         <h3 className="italic-bold font-headline text-xl text-white uppercase tracking-widest">
-          所有賽事 <span className="text-xs text-on-surface-variant font-normal">ALL EVENTS</span>
+          所有挑戰 <span className="text-xs text-on-surface-variant font-normal">ALL CHALLENGES</span>
         </h3>
 
         {isLoading ? (
@@ -808,56 +819,71 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
           </div>
         ) : (
           <div className="space-y-6">
-            {ongoing.length > 0 && (
+            {active.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                  <span className="text-sm font-bold text-secondary uppercase tracking-wider">進行中 (Ongoing)</span>
+                  <span className="text-sm font-bold text-secondary uppercase tracking-wider">進行中 (Active)</span>
                 </div>
-                {ongoing.map(ev => (
-                  <div key={ev.id} className="bg-surface-container-high rounded-2xl p-5 border-l-4 border-secondary shadow-lg">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">LIVE</div>
-                        <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{ev.title}</h4>
-                        <p className="text-on-surface-variant text-[10px] mt-1">{ev.date} {ev.time || ''} · {ev.region}</p>
+                {active.map(seg => {
+                  const challenge = segmentToChallenge(seg);
+                  const daysLeft = getDaysRemaining(seg.end_date);
+                  return (
+                    <button
+                      key={seg.id}
+                      onClick={() => onNavigate('race-detail', challenge)}
+                      className="w-full bg-surface-container-high rounded-2xl p-5 border-l-4 border-secondary shadow-lg text-left active:scale-[0.98] transition-all"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          {daysLeft !== null && <div className="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">{daysLeft} 天</div>}
+                          <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{seg.description || seg.name}</h4>
+                          {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date}</p>}
+                        </div>
+                        <div className="text-right shrink-0 ml-4">
+                          <div className="italic-bold font-headline text-primary text-xl">{challenge.distance}</div>
+                          <div className="text-[10px] text-on-surface-variant">{challenge.elevation}</div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <div className="italic-bold font-headline text-primary text-xl">{ev.distance} KM</div>
-                        <div className="text-[10px] text-on-surface-variant">{ev.elevation} M ELEV</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
-            {upcoming.length > 0 && (
+            {expired.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-tertiary" />
-                  <span className="text-sm font-bold text-tertiary uppercase tracking-wider">待報名 (Open for Registration)</span>
+                  <div className="w-2 h-2 rounded-full bg-on-surface-variant" />
+                  <span className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">已結束 (Ended)</span>
                 </div>
-                {upcoming.map(ev => (
-                  <div key={ev.id} className="bg-surface-container-high rounded-2xl p-5 border-l-4 border-tertiary shadow-lg">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{ev.title}</h4>
-                        <p className="text-primary text-[10px] font-bold mt-1">報名中 · {ev.date} {ev.time || ''}</p>
-                        {ev.region && <p className="text-on-surface-variant text-[10px]">{ev.region}</p>}
+                {expired.map(seg => {
+                  const challenge = segmentToChallenge(seg);
+                  return (
+                    <button
+                      key={seg.id}
+                      onClick={() => onNavigate('race-detail', challenge)}
+                      className="w-full bg-surface-container-high rounded-2xl p-5 opacity-50 text-left active:scale-[0.98] transition-all"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="bg-surface-container text-on-surface-variant text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">已結束</div>
+                          <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{seg.description || seg.name}</h4>
+                          {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date}</p>}
+                        </div>
+                        <div className="text-right shrink-0 ml-4">
+                          <div className="italic-bold font-headline text-white text-xl">{challenge.distance}</div>
+                          <div className="text-[10px] text-on-surface-variant">{challenge.elevation}</div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <div className="italic-bold font-headline text-primary text-xl">{ev.distance} KM</div>
-                        <div className="text-[10px] text-on-surface-variant uppercase">{ev.elevation} M ELEV</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
-            {ongoing.length === 0 && upcoming.length === 0 && (
-              <p className="text-on-surface-variant text-sm text-center py-8">目前無活動資料</p>
+            {active.length === 0 && expired.length === 0 && (
+              <p className="text-on-surface-variant text-sm text-center py-8">目前無挑戰資料</p>
             )}
           </div>
         )}
