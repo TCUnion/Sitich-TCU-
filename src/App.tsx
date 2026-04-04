@@ -682,7 +682,7 @@ function RankingScreen() {
               </div>
             </div>
             {myEntry.elapsedTime !== null && (
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary font-headline italic-bold text-2xl px-8 py-1.5 rounded-full kinetic-slant shadow-xl">
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary font-headline italic-bold text-2xl px-8 py-1.5 rounded-full kinetic-slant shadow-xl whitespace-nowrap">
                 RANK #{myRank}
               </div>
             )}
