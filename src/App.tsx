@@ -1291,16 +1291,18 @@ function ProfileScreen() {
           )}
         </div>
 
-        <div className="flex flex-col gap-4 mt-8">
-          <div className="flex justify-end items-center text-[10px] text-on-surface-variant/60">
-            <Clock className="w-3 h-3 mr-1" />
-            <span>每日 08:00 更新</span>
+        {tcuMember && (
+          <div className="flex flex-col gap-4 mt-8">
+            <div className="flex justify-end items-center text-[10px] text-on-surface-variant/60">
+              <Clock className="w-3 h-3 mr-1" />
+              <span>每日 08:00 更新</span>
+            </div>
+            <a href="https://www.tsu.com.tw/member-data/profile" target="_blank" rel="noopener noreferrer" className="w-full bg-secondary/10 border border-secondary/30 text-secondary py-4 rounded-2xl italic-bold font-headline uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg hover:bg-secondary/20">
+              前往 TCU 會員中心
+              <ArrowRight className="w-5 h-5" />
+            </a>
           </div>
-          <a href="https://www.tsu.com.tw/member-data/profile" target="_blank" rel="noopener noreferrer" className="w-full bg-secondary/10 border border-secondary/30 text-secondary py-4 rounded-2xl italic-bold font-headline uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg hover:bg-secondary/20">
-            前往 TCU 會員中心
-            <ArrowRight className="w-5 h-5" />
-          </a>
-        </div>
+        )}
       </section>
     </motion.div>
   );
