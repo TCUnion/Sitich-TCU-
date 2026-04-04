@@ -65,6 +65,26 @@ const CHALLENGES: Challenge[] = [
     elevation: '3,275 M',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyiYYkckDcnssqWFjSfkmjoPnNnMTLP8mxoPtcXpjHsurva96XIvG-5vWlv-HpccC6T6RjLwU0NO4Cqd7APtQJTaTE8Qt4QYS-pn_xfOOkaC7a3CG3jgPsaREiCuWxJicr40F-HSDQn_NlmRHjSG7L6Mtrw9O5lmwm-w8s0uOERuTsyPtJ8C8d59aX0lTyKYGfTmWICKt2QxAyDJoe3ScpDt0h1mmKF68sNj43QFv72zfMjELKEpytmFKpEAw9rtCTXZtMO02u7qyC',
     status: 'new'
+  },
+  {
+    id: '3',
+    title: 'EARLY MORNING MARATHON TRAINING',
+    distance: '—',
+    elevation: '—',
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC4DvLqI7W47428A5NCztnVQVtng_6SptDuDpLzZmhaMjK0mvf3ufV1uTGajZPWQ3oN5UDsz-FKyzHhuHzU10BJt-eDY2ZJvepocMTZ0G1DfM3LjhIPpbQF6-gYTz0Ta_g_6-xGGg7jTMNHCnqLqOhF42LtTQOGzZ3Q5_ncIsD2TQo6QQn3N5h3wqz90H4Q4E-0PoNz8_I8ZC-BCfPCdvgNLE8fViOIyC9nf5H4f8KIwaqdZqzbLw1ibJUaGw7M2P8AIs67h0Lj21c-',
+    status: 'live',
+    participants: '2.4k 參加中',
+    time: '06:30 - 08:30'
+  },
+  {
+    id: '4',
+    title: 'ENDURANCE POWER CHALLENGE',
+    distance: '—',
+    elevation: '—',
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDetM_-jDG75bwMLojuJB7tVb-dYAbTW-xnMucBqZKbBAjzEc71yqHA064KJWKCxYJf9gVr0R_SC1vpYVD85-2MjTVcc-l3byM6YXqkdjhhTk3Uf0DU9nmPH8JNiDnPkiokcqfe6LGRhJ_LgDQpzsDI4o3s_Uq78TN8GZLu8hQ0DUNSJQ0_Lv5hmOpWj0MbnRrSeNRe5eqCa3dCqR0TOOQeKEyU7fIvleYSl6NIcFKpEAw9rtCTXZtMO02u7qyC',
+    status: 'live',
+    participants: '842 參加中',
+    time: '進行中 01:24:12'
   }
 ];
 
@@ -343,18 +363,20 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
           <button className="text-[10px] text-primary italic-bold uppercase">VIEW ALL</button>
         </div>
         <div className="space-y-4">
-          <EventCard 
+          <EventCard
             title="Early Morning Marathon Training"
             participants="2.4k 參加中"
             time="06:30 - 08:30"
             image="https://lh3.googleusercontent.com/aida-public/AB6AXuC4DvLqI7W47428A5NCztnVQVtng_6SptDuDpLzZmhaMjK0mvf3ufV1uTGajZPWQ3oN5UDsz-FKyzHhuHzU10BJt-eDY2ZJvepocMTZ0G1DfM3LjhIPpbQF6-gYTz0Ta_g_6-xGGg7jTMNHCnqLqOhF42LtTQOGzZ3Q5_ncIsD2TQo6QQn3N5h3wqz90H4Q4E-0PoNz8_I8ZC-BCfPCdvgNLE8fViOIyC9nf5H4f8KIwaqdZqzbLw1ibJUaGw7M2P8AIs67h0Lj21c-"
+            onClick={() => onNavigate('race-detail', CHALLENGES[2])}
           />
-          <EventCard 
+          <EventCard
             title="Endurance Power Challenge"
             participants="842 參加中"
             time="進行中 01:24:12"
             image="https://lh3.googleusercontent.com/aida-public/AB6AXuDetM_-jDG75bwMLojuJB7tVb-dYAbTW-xnMucBqZKbBAjzEc71yqHA064KJWKCxYJf9gVr0R_SC1vpYVD85-2MjTVcc-l3byM6YXqkdjhhTk3Uf0DU9nmPH8JNiDnPkiokcqfe6LGRhJ_LgDQpzsDI4o3s_Uq78TN8GZLu8hQ0DUNSJQ0_Lv5hmOpWj0MbnRrSeNRe5eqCa3dCqR0TOOQeKEyU7fIvleYSl6NIcFKqDr7V9tBYH3ZNEbRYZ58W4WHsaOWLcqkERsBD"
             isTimer
+            onClick={() => onNavigate('race-detail', CHALLENGES[3])}
           />
         </div>
       </section>
@@ -362,9 +384,12 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
   );
 }
 
-function EventCard({ title, participants, time, image, isTimer }: { title: string, participants: string, time: string, image: string, isTimer?: boolean }) {
+function EventCard({ title, participants, time, image, isTimer, onClick }: { title: string, participants: string, time: string, image: string, isTimer?: boolean, onClick?: () => void }) {
   return (
-    <div className="relative bg-surface-container-high rounded-2xl overflow-hidden flex items-center p-4 gap-4 shadow-md border border-surface-container-highest/50">
+    <div
+      onClick={onClick}
+      className="relative bg-surface-container-high rounded-2xl overflow-hidden flex items-center p-4 gap-4 shadow-md border border-surface-container-highest/50 cursor-pointer active:scale-[0.98] transition-transform"
+    >
       <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0">
         <img src={image} alt={title} className="w-full h-full object-cover" />
       </div>
@@ -379,7 +404,10 @@ function EventCard({ title, participants, time, image, isTimer }: { title: strin
           {time}
         </div>
       </div>
-      <button className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-primary hover:bg-primary hover:text-on-primary transition-all">
+      <button
+        onClick={e => { e.stopPropagation(); onClick?.(); }}
+        className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-primary hover:bg-primary hover:text-on-primary transition-all"
+      >
         <Plus className="w-5 h-5" />
       </button>
     </div>
