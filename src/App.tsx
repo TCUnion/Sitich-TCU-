@@ -344,6 +344,31 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
       exit={{ opacity: 0, y: -20 }}
       className="px-4 space-y-8"
     >
+      {/* Hero Section */}
+      <section className="relative rounded-2xl overflow-hidden min-h-[320px] flex items-end p-6 bg-surface-container-low shadow-xl">
+        <div className="absolute inset-0 z-0">
+          <img
+            src={CHALLENGES[1].image}
+            alt="Hero"
+            className="w-full h-full object-cover opacity-60"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
+        </div>
+        <div className="relative z-10 w-full space-y-4">
+          <div className="inline-block px-3 py-1 bg-tertiary/20 text-tertiary rounded text-[10px] font-bold tracking-widest uppercase italic">
+            每週精選挑戰
+          </div>
+          <h2 className="text-4xl italic-bold font-headline leading-tight uppercase">THE RED RIDGE</h2>
+          <button
+            onClick={() => onNavigate('race-detail', CHALLENGES[1])}
+            className="bg-primary text-on-primary px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20"
+          >
+            <span>立即註冊</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
+      </section>
+
       {/* Live Events */}
       <section className="space-y-4">
         <div className="flex justify-between items-center">
