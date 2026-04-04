@@ -146,6 +146,40 @@ export async function unregisterChallenge(athleteId: number, segmentId: number):
   if (error) throw error;
 }
 
+export interface TCUMemberProfile {
+  email: string;
+  real_name: string | null;
+  account: string | null;
+  nickname: string | null;
+  team: string | null;
+  tcu_id: string | null;
+  member_type: string | null;
+  profile_photo: string | null;
+}
+
+/** 透過 Strava athlete ID 查詢 TCU 會員資料（兩步查詢：bindings → tcu_members） */
+export async function getTCUMemberByStravaId(athleteId: number): Promise<TCUMemberProfile | null> {
+  const { data: bindings } = await supabase
+    .from('strava_member_bindings')
+    .select('tcu_member_email, tcu_account')
+    .eq('strava_id', String(athleteId))
+    .limit(1);
+  if (!bindings || bindings.length === 0) return null;
+  const { tcu_member_email, tcu_account } = bindings[0];
+  let query = supabase
+    .from('tcu_members')
+    .select('email, real_name, account, nickname, team, tcu_id, member_type, profile_photo');
+  if (tcu_account) {
+    query = query.eq('account', tcu_account);
+  } else if (tcu_member_email) {
+    query = query.eq('email', tcu_member_email);
+  } else {
+    return null;
+  }
+  const { data } = await query.limit(1);
+  return data?.[0] ?? null;
+}
+
 /** 取得官方賽事（published，日期倒序） */
 export async function getOfficialEvents(limit = 5): Promise<OfficialEvent[]> {
   const { data, error } = await supabase

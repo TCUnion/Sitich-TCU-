@@ -33,7 +33,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -1051,6 +1051,7 @@ function ProfileScreen() {
   const [mySegmentIds, setMySegmentIds] = useState<number[]>([]);
   const [myTimesMap, setMyTimesMap] = useState<Map<number, number>>(new Map());
   const [loadingRecords, setLoadingRecords] = useState(false);
+  const [tcuMember, setTcuMember] = useState<TCUMemberProfile | null>(null);
 
   useEffect(() => {
     if (!athlete) return;
@@ -1058,9 +1059,11 @@ function ProfileScreen() {
     Promise.all([
       getMyRegistrations(athlete.id),
       getMySegmentElapsedTimes(athlete.id),
-    ]).then(([ids, times]) => {
+      getTCUMemberByStravaId(athlete.id),
+    ]).then(([ids, times, tcu]) => {
       setMySegmentIds(ids);
       setMyTimesMap(times);
+      setTcuMember(tcu);
     }).finally(() => setLoadingRecords(false));
   }, [athlete?.id]);
 
@@ -1190,20 +1193,25 @@ function ProfileScreen() {
                 ? <ProfileItem label="所在地" value={locationStr} icon={<Globe className="w-3 h-3 text-secondary" />} />
                 : <ProfileItem label="所在地" value="—" icon={<Globe className="w-3 h-3 text-secondary" />} />
               }
-              <ProfileItem label="TCU 真實姓名" value="請至會員中心填寫" />
-              <ProfileItem label="所屬車隊" value="請至會員中心填寫" icon={<Users className="w-3 h-3 text-secondary" />} />
+              <ProfileItem label="TCU 真實姓名" value={tcuMember?.real_name ?? '—'} />
+              <ProfileItem label="所屬車隊" value={tcuMember?.team ?? '—'} icon={<Users className="w-3 h-3 text-secondary" />} />
+              {tcuMember?.tcu_id && <ProfileItem label="TCU ID" value={tcuMember.tcu_id} />}
+              {tcuMember?.member_type && <ProfileItem label="會員類型" value={tcuMember.member_type} />}
+              {tcuMember?.nickname && <ProfileItem label="暱稱" value={tcuMember.nickname} />}
             </div>
           </div>
 
-          <div className="bg-surface-container-high rounded-2xl p-5 border border-white/5 shadow-lg">
-            <div className="flex items-center gap-2 mb-3">
-              <Edit3 className="w-4 h-4 text-on-surface-variant" />
-              <span className="text-xs font-medium text-on-surface-variant">詳細資料</span>
+          {!tcuMember && (
+            <div className="bg-surface-container-high rounded-2xl p-5 border border-white/5 shadow-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <Edit3 className="w-4 h-4 text-on-surface-variant" />
+                <span className="text-xs font-medium text-on-surface-variant">尚未綁定 TCU 帳號</span>
+              </div>
+              <p className="text-xs text-on-surface-variant/80 leading-relaxed">
+                前往 TCU 會員中心完成 Strava 綁定，即可顯示真實姓名、車隊、會員資料。
+              </p>
             </div>
-            <p className="text-xs text-on-surface-variant/80 leading-relaxed">
-              聯絡資訊、緊急聯絡人、性別、生日等欄位請前往 TCU 會員中心完成填寫。
-            </p>
-          </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 mt-8">
