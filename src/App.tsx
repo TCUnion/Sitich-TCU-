@@ -31,7 +31,8 @@ import {
 } from 'lucide-react';
 
 import { Screen, Challenge, User } from './types';
-import { getUpcomingCyclingEvents, CyclingEvent } from './services/api';
+import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
+import { MapThumbnail } from './components/MapThumbnail';
 
 // Mock Data
 const MOCK_USER: User = {
@@ -324,18 +325,39 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   );
 }
 
-const FALLBACK_EVENT_IMAGE = 'https://lh3.googleusercontent.com/aida-public/AB6AXuC4DvLqI7W47428A5NCztnVQVtng_6SptDuDpLzZmhaMjK0mvf3ufV1uTGajZPWQ3oN5UDsz-FKyzHhuHzU10BJt-eDY2ZJvepocMTZ0G1DfM3LjhIPpbQF6-gYTz0Ta_g_6-xGGg7jTMNHCnqLqOhF42LtTQOGzZ3Q5_ncIsD2TQo6QQn3N5h3wqz90H4Q4E-0PoNz8_I8ZC-BCfPCdvgNLE8fViOIyC9nf5H4f8KIwaqdZqzbLw1ibJUaGw7M2P8AIs67h0Lj21c-';
+/** 計算剩餘天數；負數 = 已過期；null = 無結束日期 */
+function getDaysRemaining(endDate?: string): number | null {
+  if (!endDate) return null;
+  try {
+    const end = new Date(endDate);
+    if (isNaN(end.getTime())) return null;
+    return Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  } catch {
+    return null;
+  }
+}
+
+function segmentToChallenge(s: StravaSegment): Challenge {
+  return {
+    id: String(s.id),
+    title: s.description || s.name,
+    distance: s.distance ? `${(s.distance / 1000).toFixed(1)} km` : '—',
+    elevation: s.average_grade ? `${s.average_grade.toFixed(1)}%` : '—',
+    image: s.og_image ?? '',
+    status: 'live',
+    participants: s.team,
+    time: s.end_date,
+  };
+}
 
 function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
-  const [cyclingEvents, setCyclingEvents] = useState<CyclingEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { segments, isLoading } = useSegmentData();
 
-  useEffect(() => {
-    getUpcomingCyclingEvents(10)
-      .then(setCyclingEvents)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const sorted = [...segments].sort((a, b) => {
+    const dA = getDaysRemaining(a.end_date) ?? 999;
+    const dB = getDaysRemaining(b.end_date) ?? 999;
+    return dB - dA;
+  });
 
   return (
     <motion.div
@@ -369,39 +391,82 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
         </div>
       </section>
 
-      {/* Live Events */}
+      {/* Segments */}
       <section className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-xl italic-bold font-headline uppercase tracking-wide">近期約騎活動</h3>
+          <h3 className="text-xl italic-bold font-headline uppercase tracking-wide">進行中挑戰</h3>
           <button className="text-[10px] text-primary italic-bold uppercase">VIEW ALL</button>
         </div>
-        <div className="space-y-4">
-          {loading && (
-            <div className="text-center text-on-surface/50 py-8 text-sm">載入中...</div>
-          )}
-          {!loading && cyclingEvents.length === 0 && (
-            <div className="text-center text-on-surface/50 py-8 text-sm">目前無近期活動</div>
-          )}
-          {cyclingEvents.map(event => {
-            const challenge: Challenge = {
-              id: event.id,
-              title: event.title,
-              distance: event.distance ? `${event.distance} km` : '—',
-              elevation: event.elevation ? `${event.elevation} m` : '—',
-              image: event.cover_image ?? FALLBACK_EVENT_IMAGE,
-              status: 'live',
-              participants: event.max_participants ? `${event.max_participants} 人上限` : undefined,
-              time: event.time ? `${event.date} ${event.time}` : event.date,
-            };
+
+        {isLoading && (
+          <div className="text-center text-on-surface/50 py-8 text-sm">載入中...</div>
+        )}
+        {!isLoading && sorted.length === 0 && (
+          <div className="text-center text-on-surface/50 py-8 text-sm">目前無進行中挑戰</div>
+        )}
+
+        <div className="grid grid-cols-1 gap-3">
+          {sorted.map(seg => {
+            const daysRemaining = getDaysRemaining(seg.end_date);
+            const isExpired = daysRemaining !== null && daysRemaining <= 0;
+            const challenge = segmentToChallenge(seg);
+
             return (
-              <EventCard
-                key={event.id}
-                title={event.title}
-                participants={event.max_participants ? `${event.max_participants} 人上限` : (event.pace ?? '約騎')}
-                time={event.time ? `${event.date} ${event.time}` : event.date}
-                image={event.cover_image ?? FALLBACK_EVENT_IMAGE}
+              <button
+                key={seg.id}
                 onClick={() => onNavigate('race-detail', challenge)}
-              />
+                className={`relative w-full aspect-[4/3] rounded-2xl overflow-hidden text-left transition-all active:scale-[0.97] ${
+                  isExpired ? 'opacity-40 grayscale' : 'card-glow'
+                }`}
+              >
+                {/* 背景：地圖 or og_image */}
+                <div className="absolute inset-0">
+                  {seg.polyline ? (
+                    <MapThumbnail encoded={seg.polyline} />
+                  ) : seg.og_image ? (
+                    <img src={seg.og_image} alt={seg.name} className="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="w-full h-full bg-[#0f1117]" />
+                  )}
+                </div>
+
+                {/* 漸層遮罩 */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+
+                {/* 頂部標籤 */}
+                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                  {isExpired ? (
+                    <span className="text-[10px] font-bold text-white/70 bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                      已結束
+                    </span>
+                  ) : daysRemaining !== null ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full text-emerald-300 bg-black/50 backdrop-blur-sm shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                      <Clock size={9} />
+                      {daysRemaining}天
+                    </span>
+                  ) : null}
+                  {!isExpired && seg.team && (
+                    <span className="text-[9px] font-bold text-white bg-[#FC5200]/80 px-1.5 py-0.5 rounded-full">
+                      {seg.team}
+                    </span>
+                  )}
+                </div>
+
+                {/* 底部資訊 */}
+                <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 flex items-end justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-bold text-[14px] leading-snug truncate drop-shadow-sm">
+                      {seg.description || seg.name}
+                    </h3>
+                    <p className="text-white/55 text-[11px] mt-0.5">
+                      {seg.distance ? `${(seg.distance / 1000).toFixed(1)} km` : '—'} · {seg.average_grade ? `${seg.average_grade.toFixed(1)}%` : '—'}
+                    </p>
+                  </div>
+                  <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full backdrop-blur-sm ${isExpired ? 'bg-white/10' : 'bg-[#FC5200]/80'}`}>
+                    <ChevronRight size={14} className="text-white" />
+                  </div>
+                </div>
+              </button>
             );
           })}
         </div>
