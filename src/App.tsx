@@ -37,7 +37,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -1094,6 +1094,21 @@ function ProfileScreen() {
         return;
       }
       setBindingMemberData(member);
+
+      // 先查此 TCU 帳號是否已綁定
+      const boundStravaId = await checkTcuAccountBinding(member.account, member.email);
+      if (boundStravaId !== null) {
+        if (boundStravaId === String(athlete.id)) {
+          // 已綁定到當前帳號 → 直接視為成功
+          setBindingStep('success');
+          await refreshTcuMember();
+          window.dispatchEvent(new Event('tcu-binding-success'));
+        } else {
+          setBindingError('此 TCU 帳號已綁定其他 Strava 帳號，無法重複綁定。');
+        }
+        return;
+      }
+
       const res = await triggerMemberBindingOtp(
         member.email,
         member.real_name ?? member.name ?? '',

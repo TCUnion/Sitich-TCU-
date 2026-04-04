@@ -245,6 +245,25 @@ export async function findTCUMemberByIdOrAccount(input: string): Promise<TCUMemb
   return null;
 }
 
+/** 查詢 TCU 帳號是否已綁定（回傳已綁定的 strava_id，否則 null） */
+export async function checkTcuAccountBinding(account: string | null, email: string): Promise<string | null> {
+  if (account) {
+    const { data } = await supabase
+      .from('strava_member_bindings')
+      .select('strava_id')
+      .eq('tcu_account', account)
+      .limit(1);
+    if (data && data.length > 0) return String(data[0].strava_id);
+  }
+  const { data } = await supabase
+    .from('strava_member_bindings')
+    .select('strava_id')
+    .eq('tcu_member_email', email)
+    .limit(1);
+  if (data && data.length > 0) return String(data[0].strava_id);
+  return null;
+}
+
 /** 觸發 OTP 綁定郵件 */
 export async function triggerMemberBindingOtp(
   email: string,
