@@ -125,6 +125,17 @@ export async function getSegmentElapsedTimes(segmentId: number): Promise<Map<num
   return map;
 }
 
+/** 取得指定運動員在所有路段的成績（segment_id → elapsed_time） */
+export async function getMySegmentElapsedTimes(athleteId: number): Promise<Map<number, number>> {
+  const { data } = await supabase
+    .from('segment_elapsed_times')
+    .select('segment_id, elapsed_time')
+    .eq('strava_athlete_id', athleteId);
+  const map = new Map<number, number>();
+  (data ?? []).forEach(r => map.set(Number(r.segment_id), Number(r.elapsed_time)));
+  return map;
+}
+
 /** 取消報名 */
 export async function unregisterChallenge(athleteId: number, segmentId: number): Promise<void> {
   const { error } = await supabase

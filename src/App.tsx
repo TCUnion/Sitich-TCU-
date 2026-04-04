@@ -33,7 +33,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -1046,14 +1046,37 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
 }
 
 function ProfileScreen() {
+  const { athlete } = useAuth();
+  const { segments } = useSegmentData();
+  const [mySegmentIds, setMySegmentIds] = useState<number[]>([]);
+  const [myTimesMap, setMyTimesMap] = useState<Map<number, number>>(new Map());
+  const [loadingRecords, setLoadingRecords] = useState(false);
+
+  useEffect(() => {
+    if (!athlete) return;
+    setLoadingRecords(true);
+    Promise.all([
+      getMyRegistrations(athlete.id),
+      getMySegmentElapsedTimes(athlete.id),
+    ]).then(([ids, times]) => {
+      setMySegmentIds(ids);
+      setMyTimesMap(times);
+    }).finally(() => setLoadingRecords(false));
+  }, [athlete?.id]);
+
+  const mySegments = segments.filter(s => mySegmentIds.includes(s.id));
+  const displayName = athlete ? `${athlete.firstname} ${athlete.lastname}` : '—';
+  const displayAvatar = athlete?.profile_medium ?? athlete?.profile ?? MOCK_USER.avatar;
+  const locationStr = [athlete?.city, athlete?.country].filter(Boolean).join(', ');
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       className="px-5 max-w-md mx-auto pb-12"
     >
-      {/* Radar Chart Section */}
+      {/* Header: Radar Chart + Profile Picture */}
       <section className="relative flex flex-col items-center mb-10">
         <div className="relative w-72 h-72 flex items-center justify-center">
           <svg className="w-full h-full" viewBox="0 0 200 200">
@@ -1072,25 +1095,86 @@ function ProfileScreen() {
             <text className="font-bold" fill="white" fontSize="10" textAnchor="end" x="15" y="103">繞圈</text>
             <text className="font-bold" fill="white" fontSize="10" textAnchor="middle" x="100" y="15">計時</text>
           </svg>
+          {/* Real Strava profile picture centered on radar */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <img
+              src={displayAvatar}
+              alt={displayName}
+              className="w-20 h-20 rounded-full border-2 border-primary object-cover shadow-xl"
+            />
+          </div>
         </div>
         <div className="mt-6 text-center">
-          <h2 className="font-headline italic-bold text-4xl uppercase tracking-tight text-primary">{MOCK_USER.name}</h2>
-          <p className="text-on-surface-variant text-sm mt-1 uppercase tracking-widest">{MOCK_USER.team}</p>
+          <h2 className="font-headline italic-bold text-4xl uppercase tracking-tight text-primary">{displayName}</h2>
+          {locationStr && (
+            <p className="text-on-surface-variant text-xs mt-1 flex items-center justify-center gap-1">
+              <MapPin className="w-3 h-3" />{locationStr}
+            </p>
+          )}
+          <p className="text-on-surface-variant text-[10px] mt-1 uppercase tracking-widest">
+            Strava #{athlete?.id ?? '—'}
+          </p>
         </div>
       </section>
 
-      {/* Member Profile */}
+      {/* 我的挑戰記錄 */}
+      <section className="mb-10">
+        <div className="flex items-center gap-2 text-on-surface-variant mb-4">
+          <Trophy className="w-4 h-4" />
+          <span className="text-xs font-medium">我的挑戰記錄</span>
+          <span className="ml-auto text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{mySegmentIds.length} 場</span>
+        </div>
+        {loadingRecords ? (
+          <div className="text-center text-on-surface-variant text-sm py-8">載入中...</div>
+        ) : mySegments.length === 0 ? (
+          <div className="bg-surface-container-high rounded-2xl p-6 text-center border border-white/5">
+            <ClipboardCheck className="w-8 h-8 text-on-surface-variant/40 mx-auto mb-3" />
+            <p className="text-on-surface-variant text-sm">尚未報名任何挑戰</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {mySegments.map(seg => {
+              const elapsedTime = myTimesMap.get(seg.id) ?? null;
+              const now = new Date();
+              const endDate = seg.end_date ? new Date(seg.end_date) : null;
+              const isActive = !endDate || endDate >= now;
+              return (
+                <div key={seg.id} className="bg-surface-container-high rounded-2xl p-4 border border-white/5 flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm leading-snug">{seg.name}</p>
+                    <p className="text-[10px] text-on-surface-variant mt-0.5">
+                      {seg.distance ? `${(seg.distance / 1000).toFixed(1)} km` : '—'}
+                      {seg.end_date && ` · 截止 ${new Date(seg.end_date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}`}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {elapsedTime !== null ? (
+                      <>
+                        <p className="font-headline italic-bold text-primary text-lg">{formatElapsedTime(elapsedTime)}</p>
+                        <p className="text-[10px] text-on-surface-variant">完賽</p>
+                      </>
+                    ) : (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${isActive ? 'bg-tertiary/20 text-tertiary' : 'bg-outline-variant/20 text-on-surface-variant'}`}>
+                        {isActive ? '進行中' : '未完成'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* TCU 會員資料 */}
       <section className="mb-10 space-y-8">
         <div className="flex items-start gap-4 mb-6">
           <div className="bg-secondary p-3 rounded-2xl shadow-lg shadow-secondary/20">
             <ShieldCheck className="w-6 h-6 text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-headline italic-bold text-2xl uppercase text-on-surface">TCU 會員資料</h3>
-              <span className="bg-secondary/20 text-secondary text-[10px] font-bold px-2 py-0.5 rounded border border-secondary/30">付費車隊管理員</span>
-            </div>
-            <p className="text-on-surface-variant text-[10px] mt-0.5 tracking-wider"># TCU-ZVNRQONH9COQY4KQ</p>
+            <h3 className="font-headline italic-bold text-2xl uppercase text-on-surface">TCU 會員資料</h3>
+            <p className="text-on-surface-variant text-[10px] mt-0.5 tracking-wider">Strava ID: {athlete?.id ?? '—'}</p>
           </div>
         </div>
 
@@ -1101,81 +1185,34 @@ function ProfileScreen() {
               <span className="text-xs font-medium">基本資料</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <ProfileItem label="真實姓名" value={`${MOCK_USER.name} (憲哥)`} />
-              <ProfileItem label="所屬車隊" value="憲動工作室" icon={<Users className="w-3 h-3 text-secondary" />} />
-              <ProfileItem label="性別 / 生日" value="男 | 1974-02-06" icon={<UserCircle className="w-3 h-3 text-secondary" />} />
-              <ProfileItem label="國籍 / 身分證號" value="Taiwan | Y12****973" icon={<Globe className="w-3 h-3 text-secondary" />} />
+              <ProfileItem label="Strava 姓名" value={displayName} />
+              {locationStr
+                ? <ProfileItem label="所在地" value={locationStr} icon={<Globe className="w-3 h-3 text-secondary" />} />
+                : <ProfileItem label="所在地" value="—" icon={<Globe className="w-3 h-3 text-secondary" />} />
+              }
+              <ProfileItem label="TCU 真實姓名" value="請至會員中心填寫" />
+              <ProfileItem label="所屬車隊" value="請至會員中心填寫" icon={<Users className="w-3 h-3 text-secondary" />} />
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-on-surface-variant">
-              <MailIcon className="w-4 h-4" />
-              <span className="text-xs font-medium">聯絡資訊</span>
-            </div>
-            <div className="bg-surface-container-high rounded-2xl p-5 border border-white/5 space-y-4 shadow-lg">
-              <div>
-                <p className="text-[10px] text-on-surface-variant uppercase mb-1">電子郵件</p>
-                <div className="flex items-center gap-2">
-                  <MailIcon className="w-4 h-4 text-secondary" />
-                  <p className="text-sm">samkhlin@gmail.com</p>
-                </div>
-              </div>
-              <div className="pt-4 border-t border-white/5">
-                <p className="text-[10px] text-on-surface-variant uppercase mb-1">通訊地址</p>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-secondary" />
-                  <p className="text-sm">408台中市南屯區東興路三段257號6樓之5</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-error/10 border border-error/20 rounded-2xl p-5 shadow-lg">
+          <div className="bg-surface-container-high rounded-2xl p-5 border border-white/5 shadow-lg">
             <div className="flex items-center gap-2 mb-3">
-              <Heart className="w-4 h-4 text-error fill-current" />
-              <span className="text-[10px] font-bold text-error uppercase tracking-wider">緊急聯絡人</span>
+              <Edit3 className="w-4 h-4 text-on-surface-variant" />
+              <span className="text-xs font-medium text-on-surface-variant">詳細資料</span>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-on-surface">葉** <span className="bg-error/20 text-error text-[10px] px-1.5 py-0.5 rounded ml-1">朋友</span></p>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-error" />
-                <p className="text-sm italic-bold font-headline text-error">09*******40</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-on-surface-variant">
-              <FileText className="w-4 h-4" />
-              <span className="text-xs font-medium">個人簡介 & 技能</span>
-            </div>
-            <div className="bg-surface-container-high rounded-2xl p-6 border border-white/5 shadow-lg">
-              <p className="text-xs text-on-surface/80 leading-relaxed mb-6">
-                在台灣真的想晉身國際舞台的未來青年精英。不要再執著於沒有激情的高山賽事，它永遠只有一套劇本。但繞圈賽永遠沒有劇本。但是有鑒於繞圈賽的心理與技術能力門檻高，所以這次採用能力組與零報名費的方式，讓全台車友可以參加人生的第一場繞圈賽。就跟寫程式一樣，「Hello world」是你學程式的第一堂課。麻糍埔繞圈賽的第一堂就是由這個『Hello! Criterium』開始。
-              </p>
-              <div className="pt-4 border-t border-white/5 flex items-center gap-2 text-[10px] text-on-surface-variant">
-                <ExternalLink className="w-3 h-3" />
-                <span>若要修正能力分組，請前往 </span>
-                <button className="text-secondary underline font-bold">能力分組正確維護</button>
-              </div>
-            </div>
+            <p className="text-xs text-on-surface-variant/80 leading-relaxed">
+              聯絡資訊、緊急聯絡人、性別、生日等欄位請前往 TCU 會員中心完成填寫。
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 mt-12">
-          <div className="flex justify-between items-center text-[10px] text-on-surface-variant/60">
-            <div className="flex items-center gap-1.5">
-              <Edit3 className="w-3 h-3" />
-              <span>若需修改個人資料，請前往 <button className="underline">TCU 會員中心</button></span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              <span>每日 08:00 更新</span>
-            </div>
+        <div className="flex flex-col gap-4 mt-8">
+          <div className="flex justify-end items-center text-[10px] text-on-surface-variant/60">
+            <Clock className="w-3 h-3 mr-1" />
+            <span>每日 08:00 更新</span>
           </div>
           <button className="w-full bg-secondary/10 border border-secondary/30 text-secondary py-4 rounded-2xl italic-bold font-headline uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg hover:bg-secondary/20">
-            完成 / 前往 DASHBOARD
+            前往 TCU 會員中心
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>
