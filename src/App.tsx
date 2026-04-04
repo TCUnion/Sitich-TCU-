@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 
 import { Screen, Challenge, User } from './types';
+import { getUpcomingCyclingEvents, CyclingEvent } from './services/api';
 
 // Mock Data
 const MOCK_USER: User = {
@@ -323,9 +324,21 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   );
 }
 
+const FALLBACK_EVENT_IMAGE = 'https://lh3.googleusercontent.com/aida-public/AB6AXuC4DvLqI7W47428A5NCztnVQVtng_6SptDuDpLzZmhaMjK0mvf3ufV1uTGajZPWQ3oN5UDsz-FKyzHhuHzU10BJt-eDY2ZJvepocMTZ0G1DfM3LjhIPpbQF6-gYTz0Ta_g_6-xGGg7jTMNHCnqLqOhF42LtTQOGzZ3Q5_ncIsD2TQo6QQn3N5h3wqz90H4Q4E-0PoNz8_I8ZC-BCfPCdvgNLE8fViOIyC9nf5H4f8KIwaqdZqzbLw1ibJUaGw7M2P8AIs67h0Lj21c-';
+
 function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
+  const [cyclingEvents, setCyclingEvents] = useState<CyclingEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getUpcomingCyclingEvents(10)
+      .then(setCyclingEvents)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -334,9 +347,9 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
       {/* Hero Section */}
       <section className="relative rounded-2xl overflow-hidden min-h-[320px] flex items-end p-6 bg-surface-container-low shadow-xl">
         <div className="absolute inset-0 z-0">
-          <img 
-            src={CHALLENGES[1].image} 
-            alt="Hero" 
+          <img
+            src={CHALLENGES[1].image}
+            alt="Hero"
             className="w-full h-full object-cover opacity-60"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
@@ -346,7 +359,7 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
             每週精選挑戰
           </div>
           <h2 className="text-4xl italic-bold font-headline leading-tight uppercase">THE RED RIDGE</h2>
-          <button 
+          <button
             onClick={() => onNavigate('race-detail', CHALLENGES[1])}
             className="bg-primary text-on-primary px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20"
           >
@@ -359,25 +372,38 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
       {/* Live Events */}
       <section className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-xl italic-bold font-headline uppercase tracking-wide">進行中的活動</h3>
+          <h3 className="text-xl italic-bold font-headline uppercase tracking-wide">近期約騎活動</h3>
           <button className="text-[10px] text-primary italic-bold uppercase">VIEW ALL</button>
         </div>
         <div className="space-y-4">
-          <EventCard
-            title="Early Morning Marathon Training"
-            participants="2.4k 參加中"
-            time="06:30 - 08:30"
-            image="https://lh3.googleusercontent.com/aida-public/AB6AXuC4DvLqI7W47428A5NCztnVQVtng_6SptDuDpLzZmhaMjK0mvf3ufV1uTGajZPWQ3oN5UDsz-FKyzHhuHzU10BJt-eDY2ZJvepocMTZ0G1DfM3LjhIPpbQF6-gYTz0Ta_g_6-xGGg7jTMNHCnqLqOhF42LtTQOGzZ3Q5_ncIsD2TQo6QQn3N5h3wqz90H4Q4E-0PoNz8_I8ZC-BCfPCdvgNLE8fViOIyC9nf5H4f8KIwaqdZqzbLw1ibJUaGw7M2P8AIs67h0Lj21c-"
-            onClick={() => onNavigate('race-detail', CHALLENGES[2])}
-          />
-          <EventCard
-            title="Endurance Power Challenge"
-            participants="842 參加中"
-            time="進行中 01:24:12"
-            image="https://lh3.googleusercontent.com/aida-public/AB6AXuDetM_-jDG75bwMLojuJB7tVb-dYAbTW-xnMucBqZKbBAjzEc71yqHA064KJWKCxYJf9gVr0R_SC1vpYVD85-2MjTVcc-l3byM6YXqkdjhhTk3Uf0DU9nmPH8JNiDnPkiokcqfe6LGRhJ_LgDQpzsDI4o3s_Uq78TN8GZLu8hQ0DUNSJQ0_Lv5hmOpWj0MbnRrSeNRe5eqCa3dCqR0TOOQeKEyU7fIvleYSl6NIcFKqDr7V9tBYH3ZNEbRYZ58W4WHsaOWLcqkERsBD"
-            isTimer
-            onClick={() => onNavigate('race-detail', CHALLENGES[3])}
-          />
+          {loading && (
+            <div className="text-center text-on-surface/50 py-8 text-sm">載入中...</div>
+          )}
+          {!loading && cyclingEvents.length === 0 && (
+            <div className="text-center text-on-surface/50 py-8 text-sm">目前無近期活動</div>
+          )}
+          {cyclingEvents.map(event => {
+            const challenge: Challenge = {
+              id: event.id,
+              title: event.title,
+              distance: event.distance ? `${event.distance} km` : '—',
+              elevation: event.elevation ? `${event.elevation} m` : '—',
+              image: event.cover_image ?? FALLBACK_EVENT_IMAGE,
+              status: 'live',
+              participants: event.max_participants ? `${event.max_participants} 人上限` : undefined,
+              time: event.time ? `${event.date} ${event.time}` : event.date,
+            };
+            return (
+              <EventCard
+                key={event.id}
+                title={event.title}
+                participants={event.max_participants ? `${event.max_participants} 人上限` : (event.pace ?? '約騎')}
+                time={event.time ? `${event.date} ${event.time}` : event.date}
+                image={event.cover_image ?? FALLBACK_EVENT_IMAGE}
+                onClick={() => onNavigate('race-detail', challenge)}
+              />
+            );
+          })}
         </div>
       </section>
     </motion.div>
