@@ -271,13 +271,14 @@ export async function triggerMemberBindingOtp(
   stravaId: number,
   inputId: string,
 ): Promise<{ already_bound?: boolean }> {
-  return apiPost('/api/auth/member-binding', {
-    email,
-    memberName,
-    stravaId,
-    input_id: inputId,
-    action: 'generate_otp',
+  const res = await fetch(`${API_BASE}/webhook/member-binding`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, memberName, stravaId, input_id: inputId, action: 'generate_otp' }),
   });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  return (text ? JSON.parse(text) : {}) as { already_bound?: boolean };
 }
 
 /** 驗證 OTP（查詢 tcu_members.otp_code） */
