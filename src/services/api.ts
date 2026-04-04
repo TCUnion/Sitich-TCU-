@@ -64,6 +64,37 @@ export async function getUpcomingCyclingEvents(limit = 10): Promise<CyclingEvent
   return data ?? [];
 }
 
+/** 取得指定運動員的報名路段 ID 清單 */
+export async function getMyRegistrations(athleteId: number): Promise<number[]> {
+  const { data } = await supabase
+    .from('challenge_registrations')
+    .select('segment_id')
+    .eq('athlete_id', athleteId);
+  return (data ?? []).map(r => Number(r.segment_id));
+}
+
+/** 報名挑戰 */
+export async function registerChallenge(
+  athleteId: number,
+  athleteName: string,
+  segmentId: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from('challenge_registrations')
+    .upsert({ athlete_id: athleteId, athlete_name: athleteName, segment_id: segmentId });
+  if (error) throw error;
+}
+
+/** 取消報名 */
+export async function unregisterChallenge(athleteId: number, segmentId: number): Promise<void> {
+  const { error } = await supabase
+    .from('challenge_registrations')
+    .delete()
+    .eq('athlete_id', athleteId)
+    .eq('segment_id', segmentId);
+  if (error) throw error;
+}
+
 /** 取得官方賽事（published，日期倒序） */
 export async function getOfficialEvents(limit = 5): Promise<OfficialEvent[]> {
   const { data, error } = await supabase

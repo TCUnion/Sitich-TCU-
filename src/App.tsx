@@ -33,7 +33,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard } from './services/api';
+import { getLeaderboard, getMyRegistrations, registerChallenge, unregisterChallenge } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -712,6 +712,44 @@ function ChallengerRow({ rank, name, profile, time, isUser }: { rank: string, na
 
 function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
   const { segments, isLoading } = useSegmentData();
+  const { athlete, isLoggedIn } = useAuth();
+  const [registeredIds, setRegisteredIds] = useState<Set<number>>(new Set());
+  const [pendingId, setPendingId] = useState<number | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!athlete?.id) return;
+    getMyRegistrations(athlete.id).then(ids => setRegisteredIds(new Set(ids)));
+  }, [athlete?.id]);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  }
+
+  async function handleRegister(segmentId: number, segmentName: string) {
+    if (!isLoggedIn || !athlete) {
+      showToast('請先登入 Strava 再報名');
+      return;
+    }
+    setPendingId(segmentId);
+    try {
+      if (registeredIds.has(segmentId)) {
+        await unregisterChallenge(athlete.id, segmentId);
+        setRegisteredIds(prev => { const s = new Set(prev); s.delete(segmentId); return s; });
+        showToast(`已取消報名：${segmentName}`);
+      } else {
+        const name = `${athlete.firstname} ${athlete.lastname}`.trim();
+        await registerChallenge(athlete.id, name, segmentId);
+        setRegisteredIds(prev => new Set(prev).add(segmentId));
+        showToast(`報名成功：${segmentName} 🎉`);
+      }
+    } catch {
+      showToast('操作失敗，請稍後再試');
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   const sorted = [...segments].sort((a, b) => {
     const dA = getDaysRemaining(a.end_date) ?? 999;
@@ -737,6 +775,13 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
       exit={{ opacity: 0, scale: 1.05 }}
       className="space-y-8"
     >
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-surface-container-highest text-white text-sm px-5 py-3 rounded-2xl shadow-2xl border border-white/10 max-w-[90vw] text-center animate-fade-in">
+          {toast}
+        </div>
+      )}
+
       <header className="px-6">
         <h1 className="italic-bold font-headline text-4xl uppercase tracking-tighter text-primary">報名賽事</h1>
         <p className="text-on-surface-variant text-sm mt-1 font-medium">UPCOMING EVENTS</p>
@@ -794,10 +839,26 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                       <span>截止：{seg.end_date?.slice(0, 10)}</span>
                     </div>
                   )}
-                  <button className="w-full bg-primary text-on-primary py-4 rounded-xl italic-bold font-headline uppercase tracking-widest active:scale-[0.98] transition-all flex justify-center items-center gap-2 shadow-lg shadow-primary/20">
-                    查看詳情
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={e => { e.stopPropagation(); onNavigate('race-detail', challenge); }}
+                      className="flex-1 border border-white/20 text-white py-4 rounded-xl italic-bold font-headline uppercase tracking-widest active:scale-[0.98] transition-all flex justify-center items-center gap-2"
+                    >
+                      詳情
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); handleRegister(seg.id, seg.description || seg.name); }}
+                      disabled={pendingId === seg.id}
+                      className={`flex-1 py-4 rounded-xl italic-bold font-headline uppercase tracking-widest active:scale-[0.98] transition-all flex justify-center items-center gap-2 shadow-lg ${
+                        registeredIds.has(seg.id)
+                          ? 'bg-secondary/20 text-secondary border border-secondary/40'
+                          : 'bg-primary text-on-primary shadow-primary/20'
+                      }`}
+                    >
+                      {pendingId === seg.id ? '...' : registeredIds.has(seg.id) ? '已報名 ✓' : '立即報名'}
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -828,24 +889,40 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                 {active.map(seg => {
                   const challenge = segmentToChallenge(seg);
                   const daysLeft = getDaysRemaining(seg.end_date);
+                  const isRegistered = registeredIds.has(seg.id);
                   return (
-                    <button
+                    <div
                       key={seg.id}
-                      onClick={() => onNavigate('race-detail', challenge)}
-                      className="w-full bg-surface-container-high rounded-2xl p-5 border-l-4 border-secondary shadow-lg text-left active:scale-[0.98] transition-all"
+                      className="bg-surface-container-high rounded-2xl p-5 border-l-4 border-secondary shadow-lg"
                     >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          {daysLeft !== null && <div className="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">{daysLeft} 天</div>}
-                          <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{seg.description || seg.name}</h4>
-                          {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date?.slice(0, 10)}</p>}
+                      <button
+                        onClick={() => onNavigate('race-detail', challenge)}
+                        className="w-full text-left"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            {daysLeft !== null && <div className="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">{daysLeft} 天</div>}
+                            <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{seg.description || seg.name}</h4>
+                            {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date?.slice(0, 10)}</p>}
+                          </div>
+                          <div className="text-right shrink-0 ml-4">
+                            <div className="italic-bold font-headline text-primary text-xl">{challenge.distance}</div>
+                            <div className="text-[10px] text-on-surface-variant">{challenge.elevation}</div>
+                          </div>
                         </div>
-                        <div className="text-right shrink-0 ml-4">
-                          <div className="italic-bold font-headline text-primary text-xl">{challenge.distance}</div>
-                          <div className="text-[10px] text-on-surface-variant">{challenge.elevation}</div>
-                        </div>
-                      </div>
-                    </button>
+                      </button>
+                      <button
+                        onClick={() => handleRegister(seg.id, seg.description || seg.name)}
+                        disabled={pendingId === seg.id}
+                        className={`mt-4 w-full py-3 rounded-xl italic-bold font-headline text-sm uppercase tracking-widest active:scale-[0.98] transition-all ${
+                          isRegistered
+                            ? 'bg-secondary/15 text-secondary border border-secondary/30'
+                            : 'bg-primary text-on-primary'
+                        }`}
+                      >
+                        {pendingId === seg.id ? '處理中...' : isRegistered ? '已報名 ✓ 點擊取消' : '立即報名'}
+                      </button>
+                    </div>
                   );
                 })}
               </div>
