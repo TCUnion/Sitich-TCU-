@@ -102,14 +102,13 @@ export interface RegistrationRecord {
   athlete_name: string;
   athlete_profile: string | null;
   team: string;
-  elapsed_time: number | null;
 }
 
 /** 取得指定路段的所有報名者（依報名時間正序） */
 export async function getSegmentRegistrations(segmentId: number): Promise<RegistrationRecord[]> {
   const { data } = await supabase
     .from('registrations')
-    .select('strava_athlete_id, athlete_name, athlete_profile, team, elapsed_time')
+    .select('strava_athlete_id, athlete_name, athlete_profile, team')
     .eq('segment_id', segmentId)
     .order('registered_at', { ascending: true, nullsFirst: false });
   return (data ?? []) as RegistrationRecord[];
