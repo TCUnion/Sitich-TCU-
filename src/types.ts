@@ -10,6 +10,14 @@ export interface Challenge {
   participants?: string;
   time?: string;
   reward?: string;
+  // 原始數值，供 RaceDetailScreen 使用
+  distanceM?: number;
+  elevationGainM?: number;
+  elevationLow?: number;
+  elevationHigh?: number;
+  stravaId?: number;
+  polyline?: string;
+  startDate?: string;
 }
 
 export interface User {

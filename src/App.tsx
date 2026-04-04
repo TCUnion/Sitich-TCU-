@@ -33,6 +33,22 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
+import { getLeaderboard } from './services/api';
+
+interface LeaderboardEntry {
+  rank?: number;
+  athlete_id?: number;
+  athlete_name?: string;
+  athlete_profile?: string;
+  elapsed_time?: number;
+  start_date_local?: string;
+}
+
+function formatElapsedTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 // Mock Data
 const MOCK_USER: User = {
@@ -148,7 +164,7 @@ export default function App() {
           )}
           {currentScreen === 'race-detail' && selectedChallenge && (
             <motion.div key="race-detail">
-              <RaceDetailScreen challenge={selectedChallenge} />
+              <RaceDetailScreen challenge={selectedChallenge} onNavigate={navigateTo} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -347,6 +363,13 @@ function segmentToChallenge(s: StravaSegment): Challenge {
     status: 'live',
     participants: s.team,
     time: s.end_date,
+    distanceM: s.distance,
+    elevationGainM: s.total_elevation_gain,
+    elevationLow: s.elevation_low,
+    elevationHigh: s.elevation_high,
+    stravaId: s.strava_id,
+    polyline: s.polyline,
+    startDate: s.start_date,
   };
 }
 
@@ -511,100 +534,173 @@ function EventCard({ title, participants, time, image, isTimer, onClick }: { tit
 }
 
 function RankingScreen() {
+  const { accessToken, athlete, isLoggedIn } = useAuth();
+  const { segments } = useSegmentData();
+  const [selectedSegId, setSelectedSegId] = useState<string | null>(null);
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 自動選取第一個進行中路段
+  useEffect(() => {
+    if (segments.length > 0 && !selectedSegId) {
+      const active = segments.find(s => {
+        const d = getDaysRemaining(s.end_date);
+        return d === null || d > 0;
+      }) ?? segments[0];
+      setSelectedSegId(String(active.strava_id || active.id));
+    }
+  }, [segments, selectedSegId]);
+
+  // 取得排行榜
+  useEffect(() => {
+    if (!selectedSegId || !accessToken) return;
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await getLeaderboard(selectedSegId, accessToken);
+        if (!cancelled) {
+          const list: LeaderboardEntry[] = Array.isArray(data) ? data : (data.entries ?? []);
+          setEntries(list);
+        }
+      } catch {
+        if (!cancelled) setError('無法載入排行榜');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedSegId, accessToken]);
+
+  const myEntry = entries.find(e => e.athlete_id === athlete?.id);
+  const myRank = myEntry?.rank ?? (myEntry ? entries.indexOf(myEntry) + 1 : null);
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       className="px-4"
     >
-      {/* Event Carousel */}
-      <section className="mb-6">
-        <div className="flex overflow-x-auto gap-4 hide-scrollbar py-2 snap-x">
-          <div className="flex-none w-72 h-40 relative rounded-2xl overflow-hidden snap-center group cursor-pointer shadow-lg">
-            <img src={CHALLENGES[1].image} alt="Active" className="absolute inset-0 w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-            <div className="absolute bottom-4 left-4">
-              <p className="text-tertiary font-headline italic-bold text-xs uppercase tracking-widest mb-1">Active Challenge</p>
-              <h3 className="text-white font-headline italic-bold text-xl uppercase">The Red Ridge</h3>
-            </div>
-          </div>
-          <div className="flex-none w-72 h-40 relative rounded-2xl overflow-hidden snap-center opacity-60 shadow-lg">
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbLWgqWcTZ_-mV7f9W7F-n2A7qAQn-1BBM23OujJASMJGXktVXIhPdLf_AjaNdeL8PH8B6Rvu6PG_TOIoKV2i9p3PbwGnEKvKogOPDDOWCCctQT9pN6oWJdGVeeiW4-bmHTKPhhD_mTKD4qgwLaSt4iyfdW2z5TiR12x0qmjyqPHqaZxVlWttO3tuKj9blX0Qju-7gkE3fMfOJLAuD1xGtTjWeP3SBPnSj1XBsP4pOvYIvhEyueIv69K2rS02tvpPt2ZTUS5HWcCtY" alt="Locked" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-            <div className="absolute bottom-4 left-4">
-              <p className="text-on-surface-variant font-headline italic-bold text-xs uppercase tracking-widest mb-1">Locked</p>
-              <h3 className="text-white font-headline italic-bold text-xl uppercase">Taipei Pass</h3>
-            </div>
-          </div>
-        </div>
+      {/* 路段選擇器 */}
+      <section className="mb-6 -mx-4 px-4 overflow-x-auto hide-scrollbar flex gap-2 py-1">
+        {segments.map(seg => {
+          const id = String(seg.strava_id || seg.id);
+          const active = selectedSegId === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setSelectedSegId(id)}
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                active
+                  ? 'bg-primary text-on-primary shadow-lg shadow-primary/20'
+                  : 'bg-surface-container text-on-surface-variant border border-outline/20'
+              }`}
+            >
+              {seg.description || seg.name}
+            </button>
+          );
+        })}
       </section>
 
-      {/* Filter */}
-      <section className="mb-8 overflow-x-auto hide-scrollbar flex gap-2 py-1">
-        <button className="px-5 py-2 rounded-full text-xs font-bold bg-secondary text-on-secondary border border-secondary shadow-lg shadow-secondary/20">進行中的賽事</button>
-        <button className="px-5 py-2 rounded-full text-xs font-bold bg-surface-container text-on-surface-variant border border-outline/20">歷史賽事</button>
-        <button className="px-5 py-2 rounded-full text-xs font-bold bg-surface-container text-on-surface-variant border border-outline/20">全部賽事</button>
-      </section>
+      {/* 未登入提示 */}
+      {!isLoggedIn && (
+        <div className="text-center text-on-surface/50 py-16 text-sm space-y-2">
+          <Trophy className="w-10 h-10 mx-auto opacity-30" />
+          <p>請先登入 Strava 以查看排行榜</p>
+        </div>
+      )}
 
-      {/* User Rank Hero */}
-      <section className="flex flex-col items-center mb-10">
-        <div className="relative mb-8">
-          <div className="w-44 h-44 rounded-full border-4 border-primary flex items-center justify-center p-2 shadow-[0_0_30px_rgba(253,228,43,0.3)]">
-            <div className="w-full h-full rounded-full overflow-hidden border-4 border-surface-container">
-              <img src={MOCK_USER.avatar} alt="User" className="w-full h-full object-cover" />
+      {/* 個人排名 Hero */}
+      {isLoggedIn && myEntry && (
+        <section className="flex flex-col items-center mb-10">
+          <div className="relative mb-8">
+            <div className="w-44 h-44 rounded-full border-4 border-primary flex items-center justify-center p-2 shadow-[0_0_30px_rgba(253,228,43,0.3)]">
+              <div className="w-full h-full rounded-full overflow-hidden border-4 border-surface-container">
+                <img src={athlete?.profile ?? myEntry.athlete_profile} alt="Me" className="w-full h-full object-cover" />
+              </div>
+            </div>
+            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary font-headline italic-bold text-2xl px-8 py-1.5 rounded-full kinetic-slant shadow-xl">
+              RANK #{myRank}
             </div>
           </div>
-          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary font-headline italic-bold text-2xl px-8 py-1.5 rounded-full kinetic-slant shadow-xl">
-            RANK #1
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4 w-full">
-          <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-secondary flex flex-col justify-between shadow-lg">
-            <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">個人最佳時間</span>
-            <div className="mt-2">
-              <span className="text-2xl font-headline italic-bold text-white">{MOCK_USER.personalBest}</span>
+          <div className="grid grid-cols-2 gap-4 w-full mt-4">
+            <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-secondary flex flex-col justify-between shadow-lg">
+              <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">個人最佳時間</span>
+              <div className="mt-2">
+                <span className="text-2xl font-headline italic-bold text-white">
+                  {myEntry.elapsed_time ? formatElapsedTime(myEntry.elapsed_time) : '—'}
+                </span>
+              </div>
+            </div>
+            <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-tertiary flex flex-col justify-between shadow-lg">
+              <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">排名 / 總人數</span>
+              <div className="mt-2">
+                <span className="text-2xl font-headline italic-bold text-white">
+                  {myRank} / {entries.length}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-tertiary flex flex-col justify-between shadow-lg">
-            <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">目前百分比排名</span>
-            <div className="mt-2">
-              <span className="text-2xl font-headline italic-bold text-white">{MOCK_USER.percentile}</span>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Challengers List */}
-      <section className="mb-12">
-        <div className="flex justify-between items-end mb-6 px-2">
-          <h2 className="font-headline italic-bold text-xl uppercase tracking-wider text-secondary">CHALLENGERS</h2>
-          <span className="text-[10px] text-on-surface-variant uppercase font-medium">Weekly Reset: 2d 14h</span>
-        </div>
-        <div className="space-y-3">
-          <ChallengerRow rank="04" name="Chen Wei-Ming" bike="Scott Foil RC" time="14:45.2" />
-          <ChallengerRow rank="05" name="YOU (LEO)" bike="Personal Best" time="14:58.8" isUser />
-          <ChallengerRow rank="06" name="Lin Jia-Yi" bike="Specialized Tarmac SL8" time="15:02.1" />
-        </div>
-      </section>
+      {/* 排行榜列表 */}
+      {isLoggedIn && (
+        <section className="mb-12">
+          <div className="flex justify-between items-end mb-6 px-2">
+            <h2 className="font-headline italic-bold text-xl uppercase tracking-wider text-secondary">CHALLENGERS</h2>
+            {entries.length > 0 && (
+              <span className="text-[10px] text-on-surface-variant uppercase font-medium">{entries.length} 名車手</span>
+            )}
+          </div>
+
+          {isLoading && (
+            <div className="text-center text-on-surface/50 py-12 text-sm">載入中...</div>
+          )}
+          {error && (
+            <div className="text-center text-on-surface/50 py-12 text-sm">{error}</div>
+          )}
+          {!isLoading && !error && entries.length === 0 && (
+            <div className="text-center text-on-surface/50 py-12 text-sm">尚無排行榜資料</div>
+          )}
+
+          <div className="space-y-3">
+            {entries.map((entry, i) => (
+              <ChallengerRow
+                key={entry.athlete_id ?? i}
+                rank={String(entry.rank ?? i + 1).padStart(2, '0')}
+                name={entry.athlete_name ?? '—'}
+                profile={entry.athlete_profile}
+                time={entry.elapsed_time ? formatElapsedTime(entry.elapsed_time) : '—'}
+                isUser={entry.athlete_id === athlete?.id}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </motion.div>
   );
 }
 
-function ChallengerRow({ rank, name, bike, time, isUser }: { rank: string, name: string, bike: string, time: string, isUser?: boolean }) {
+function ChallengerRow({ rank, name, profile, time, isUser }: { rank: string, name: string, profile?: string, time: string, isUser?: boolean }) {
   return (
     <div className={`flex items-center p-4 rounded-2xl transition-all ${isUser ? 'bg-surface-container-highest border-l-4 border-secondary shadow-lg' : 'bg-surface-container-low hover:bg-surface-container'}`}>
       <span className={`font-headline italic-bold text-2xl w-12 ${isUser ? 'text-secondary' : 'text-on-surface-variant/40'}`}>{rank}</span>
       <div className="w-10 h-10 rounded-full overflow-hidden mr-4 border border-surface-container-highest">
-        <img src={`https://i.pravatar.cc/150?u=${name}`} alt={name} className="w-full h-full object-cover" />
+        {profile ? (
+          <img src={profile} alt={name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant text-xs font-bold">{name.charAt(0)}</div>
+        )}
       </div>
       <div className="flex-grow">
         <h4 className="text-sm font-bold text-white uppercase">{name}</h4>
-        {isUser ? (
+        {isUser && (
           <span className="text-[8px] bg-secondary/20 text-secondary px-1.5 py-0.5 rounded font-bold uppercase">Personal Best</span>
-        ) : (
-          <p className="text-xs text-on-surface-variant">{bike}</p>
         )}
       </div>
       <div className="text-right">
@@ -880,9 +976,39 @@ function ProfileItem({ label, value, icon }: { label: string, value: string, ico
   );
 }
 
-function RaceDetailScreen({ challenge }: { challenge: Challenge }) {
+function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onNavigate: (screen: Screen) => void }) {
+  const { accessToken, athlete, isLoggedIn } = useAuth();
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+
+  useEffect(() => {
+    if (!challenge.stravaId) return;
+    const token = accessToken ?? '';
+    getLeaderboard(String(challenge.stravaId), token)
+      .then((data: unknown) => {
+        const list: LeaderboardEntry[] = Array.isArray(data) ? data : ((data as { entries?: LeaderboardEntry[] }).entries ?? []);
+        setLeaderboardEntries(list);
+      })
+      .catch(() => {});
+  }, [challenge.stravaId, accessToken]);
+
+  const personalBest = isLoggedIn && athlete
+    ? leaderboardEntries.find(e => e.athlete_id === athlete.id)
+    : undefined;
+
+  const daysRemaining = getDaysRemaining(challenge.time);
+
+  function formatDateRange(start?: string, end?: string): string {
+    const fmt = (d: string) => {
+      const dt = new Date(d);
+      return isNaN(dt.getTime()) ? d : `${dt.getMonth() + 1}/${dt.getDate()}`;
+    };
+    if (start && end) return `${fmt(start)} – ${fmt(end)}`;
+    if (end) return `截止 ${fmt(end)}`;
+    return '—';
+  }
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -923,51 +1049,72 @@ function RaceDetailScreen({ challenge }: { challenge: Challenge }) {
         <div className="bg-surface-container-low p-6 rounded-2xl border-l-4 border-primary flex flex-col justify-between shadow-2xl">
           <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mb-2">Elevation</span>
           <div>
-            <span className="text-4xl font-headline italic-bold text-on-surface">{challenge.elevation.split(' ')[0]}</span>
-            <span className="text-lg font-headline italic-bold text-primary ml-1">{challenge.elevation.split(' ')[1]}</span>
+            {challenge.elevationGainM != null ? (
+              <>
+                <span className="text-4xl font-headline italic-bold text-on-surface">{Math.round(challenge.elevationGainM)}</span>
+                <span className="text-lg font-headline italic-bold text-primary ml-1">M</span>
+              </>
+            ) : (
+              <span className="text-4xl font-headline italic-bold text-on-surface">{challenge.elevation}</span>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Elevation Profile */}
-      <section className="px-6 mt-10">
-        <div className="bg-surface-container rounded-2xl p-6 relative overflow-hidden shadow-xl border border-white/5">
-          <div className="flex justify-between items-end mb-8">
-            <h3 className="font-headline italic-bold text-xl tracking-tight uppercase">海拔剖面圖</h3>
-            <span className="text-[10px] text-on-surface-variant uppercase tracking-widest">Vertical Gain</span>
-          </div>
-          <div className="h-32 flex items-end gap-1.5">
-            {[20, 35, 60, 85, 100, 70, 40, 25, 15].map((h, i) => (
-              <div key={i} className="flex-1 bg-secondary/10 rounded-t-lg relative group overflow-hidden" style={{ height: `${h}%` }}>
-                <motion.div 
-                  initial={{ height: 0 }}
-                  animate={{ height: '100%' }}
-                  transition={{ delay: i * 0.1, duration: 0.5 }}
-                  className="absolute bottom-0 w-full bg-secondary opacity-40 group-hover:opacity-100 transition-all" 
-                />
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between mt-6 text-[10px] text-on-surface-variant font-medium">
-            <span>START 0KM</span>
-            <span>MID 22.5KM</span>
-            <span>FINISH 45KM</span>
-          </div>
+      {/* Stats Row */}
+      <section className="px-6 mt-4 grid grid-cols-2 gap-3">
+        <div className="bg-surface-container rounded-xl p-4 border border-white/5">
+          <p className="text-[9px] text-on-surface-variant uppercase tracking-widest mb-1">日期</p>
+          <p className="text-sm font-bold text-on-surface">{formatDateRange(challenge.startDate, challenge.time)}</p>
+        </div>
+        <div className="bg-surface-container rounded-xl p-4 border border-white/5">
+          <p className="text-[9px] text-on-surface-variant uppercase tracking-widest mb-1">剩餘時間</p>
+          <p className="text-sm font-bold text-on-surface">
+            {daysRemaining === null ? '—' : daysRemaining <= 0 ? '已結束' : `${daysRemaining} 天`}
+          </p>
+        </div>
+        <div className="bg-surface-container rounded-xl p-4 border border-white/5">
+          <p className="text-[9px] text-on-surface-variant uppercase tracking-widest mb-1">完成人數</p>
+          <p className="text-sm font-bold text-on-surface">
+            {leaderboardEntries.length > 0 ? `${leaderboardEntries.length} 人` : '—'}
+          </p>
+        </div>
+        <div className="bg-surface-container rounded-xl p-4 border border-white/5">
+          <p className="text-[9px] text-on-surface-variant uppercase tracking-widest mb-1">最佳成績</p>
+          <p className="text-sm font-bold text-on-surface">
+            {personalBest?.elapsed_time != null
+              ? formatElapsedTime(personalBest.elapsed_time)
+              : isLoggedIn ? '未完賽' : '—'}
+          </p>
         </div>
       </section>
 
-      {/* Reward Section */}
-      <section className="px-6 mt-10">
-        <div className="bg-surface-container-highest rounded-2xl p-6 border-l-4 border-tertiary flex items-center justify-between shadow-xl">
-          <div>
-            <h3 className="font-headline italic-bold text-lg tracking-tight uppercase">Race Reward</h3>
-            <p className="text-xs text-on-surface-variant">完成挑戰即可獲取</p>
+      {/* Route Map */}
+      {challenge.polyline && (
+        <section className="px-6 mt-10">
+          <div className="bg-surface-container rounded-2xl overflow-hidden shadow-xl border border-white/5">
+            <div className="flex justify-between items-center px-6 pt-5 pb-3">
+              <h3 className="font-headline italic-bold text-xl tracking-tight uppercase">路線地圖</h3>
+              {challenge.stravaId ? (
+                <a
+                  href={`https://www.strava.com/segments/${challenge.stravaId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-[10px] text-[#FC4C02] font-bold uppercase tracking-widest hover:opacity-80 transition-opacity"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  在 Strava 查看
+                </a>
+              ) : (
+                <span className="text-[10px] text-on-surface-variant uppercase tracking-widest">Segment Route</span>
+              )}
+            </div>
+            <div className="w-full h-64">
+              <MapThumbnail encoded={challenge.polyline} />
+            </div>
           </div>
-          <div className="text-right">
-            <span className="text-3xl font-headline italic-bold text-secondary tracking-tighter">{challenge.reward || '+450 PTS'}</span>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Rules */}
       <section className="px-6 mt-10 mb-12">
@@ -981,7 +1128,7 @@ function RaceDetailScreen({ challenge }: { challenge: Challenge }) {
 
       {/* Sticky Footer */}
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-surface to-transparent z-50">
-        <button className="w-full bg-secondary hover:bg-secondary/90 text-on-secondary py-5 rounded-2xl font-headline italic-bold text-xl uppercase tracking-wider shadow-[0_20px_40px_rgba(134,252,136,0.2)] active:scale-95 transition-all">
+        <button onClick={() => onNavigate('register')} className="w-full bg-secondary hover:bg-secondary/90 text-on-secondary py-5 rounded-2xl font-headline italic-bold text-xl uppercase tracking-wider shadow-[0_20px_40px_rgba(134,252,136,0.2)] active:scale-95 transition-all">
           立即報名 (CONFIRM REGISTRATION)
         </button>
       </div>
