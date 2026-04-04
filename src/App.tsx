@@ -1094,10 +1094,10 @@ function ProfileScreen() {
             <circle cx="172" cy="100" fill="#38af46" r="3" />
             <circle cx="100" cy="164" fill="#38af46" r="3" />
             <circle cx="44" cy="100" fill="#38af46" r="3" />
-            <text className="font-bold" fill="white" fontSize="10" textAnchor="start" x="185" y="103">公路</text>
-            <text className="font-bold" fill="white" fontSize="10" textAnchor="middle" x="100" y="195">登山</text>
-            <text className="font-bold" fill="white" fontSize="10" textAnchor="end" x="15" y="103">繞圈</text>
-            <text className="font-bold" fill="white" fontSize="10" textAnchor="middle" x="100" y="15">計時</text>
+            <text className="font-bold" fill="white" fontSize="10" textAnchor="start" x="183" y="103">公路</text>
+            <text className="font-bold" fill="white" fontSize="10" textAnchor="middle" x="100" y="198">登山</text>
+            <text className="font-bold" fill="white" fontSize="10" textAnchor="end" x="17" y="103">繞圈</text>
+            <text className="font-bold" fill="white" fontSize="10" textAnchor="middle" x="100" y="13">計時</text>
           </svg>
           {/* Real Strava profile picture centered on radar */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -1296,10 +1296,10 @@ function ProfileScreen() {
             <Clock className="w-3 h-3 mr-1" />
             <span>每日 08:00 更新</span>
           </div>
-          <button className="w-full bg-secondary/10 border border-secondary/30 text-secondary py-4 rounded-2xl italic-bold font-headline uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg hover:bg-secondary/20">
+          <a href="https://www.tsu.com.tw/member-data/profile" target="_blank" rel="noopener noreferrer" className="w-full bg-secondary/10 border border-secondary/30 text-secondary py-4 rounded-2xl italic-bold font-headline uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg hover:bg-secondary/20">
             前往 TCU 會員中心
             <ArrowRight className="w-5 h-5" />
-          </button>
+          </a>
         </div>
       </section>
     </motion.div>
