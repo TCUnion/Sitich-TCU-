@@ -16,9 +16,14 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+      proxy: {
+        '/api-proxy': {
+          target: env.VITE_BACKUP_API_URL || 'https://powertcuapi.zeabur.app',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api-proxy/, ''),
+        },
+      },
     },
   };
 });

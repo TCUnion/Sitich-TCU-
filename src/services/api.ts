@@ -15,10 +15,13 @@ async function apiPost<T = unknown>(path: string, body: Record<string, unknown>)
     const text = await res.text();
     return (text ? JSON.parse(text) : {}) as T;
   };
+  // 開發環境：先嘗試 localhost，失敗後走 Vite proxy（避免 CORS）
+  const isDev = import.meta.env.DEV;
   try {
     return await tryFetch(PRIMARY_API);
   } catch {
-    return await tryFetch(BACKUP_API);
+    const backupBase = isDev ? '/api-proxy' : BACKUP_API;
+    return await tryFetch(backupBase);
   }
 }
 
