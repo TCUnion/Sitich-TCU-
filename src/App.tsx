@@ -1194,7 +1194,7 @@ function ProfileScreen() {
               <ProfileItem
                 label="真實姓名"
                 value={tcuMember
-                  ? `${tcuMember.name ?? '—'}${tcuMember.nickname ? `（${tcuMember.nickname}）` : ''}`
+                  ? `${tcuMember.real_name ?? tcuMember.name ?? '—'}${tcuMember.nickname ? `（${tcuMember.nickname}）` : ''}`
                   : displayName}
               />
               <ProfileItem label="所屬車隊" value={tcuMember?.team ?? '—'} icon={<Users className="w-3 h-3 text-secondary" />} />
@@ -1251,12 +1251,12 @@ function ProfileScreen() {
               </div>
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-sm font-medium text-on-surface">{tcuMember.emergency_contact}</span>
-                {tcuMember.emergency_relation && (
-                  <span className="text-[10px] bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">{tcuMember.emergency_relation}</span>
+                {tcuMember.emergency_contact_relation && (
+                  <span className="text-[10px] bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">{tcuMember.emergency_contact_relation}</span>
                 )}
-                {tcuMember.emergency_phone && (
+                {tcuMember.emergency_contact_phone && (
                   <span className="text-xs text-on-surface-variant flex items-center gap-1">
-                    <Phone className="w-3 h-3" />{tcuMember.emergency_phone}
+                    <Phone className="w-3 h-3" />{tcuMember.emergency_contact_phone}
                   </span>
                 )}
               </div>
@@ -1264,16 +1264,16 @@ function ProfileScreen() {
           )}
 
           {/* 個人簡介 & 技能 */}
-          {tcuMember && (tcuMember.self_intro || tcuMember.skills) && (
+          {tcuMember && (tcuMember.self_introduction || tcuMember.skills) && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-on-surface-variant">
                 <FileText className="w-4 h-4" />
                 <span className="text-xs font-medium">個人簡介 & 技能</span>
               </div>
-              {tcuMember.self_intro && (
+              {tcuMember.self_introduction && (
                 <div className="bg-surface-container-high rounded-2xl p-4 border border-white/5">
                   <p className="text-xs text-on-surface-variant/90 leading-relaxed whitespace-pre-line">
-                    {tcuMember.self_intro}
+                    {tcuMember.self_introduction}
                   </p>
                 </div>
               )}

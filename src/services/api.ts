@@ -148,6 +148,7 @@ export async function unregisterChallenge(athleteId: number, segmentId: number):
 
 export interface TCUMemberProfile {
   email: string;
+  real_name: string | null;
   name: string | null;
   account: string | null;
   nickname: string | null;
@@ -161,35 +162,33 @@ export interface TCUMemberProfile {
   phone: string | null;
   address: string | null;
   emergency_contact: string | null;
-  emergency_phone: string | null;
-  emergency_relation: string | null;
-  self_intro: string | null;
+  emergency_contact_phone: string | null;
+  emergency_contact_relation: string | null;
+  self_introduction: string | null;
   skills: string | null;
 }
 
-/** 透過 Strava athlete ID 查詢 TCU 會員資料（兩步查詢：bindings → tcu_members） */
+/** 透過 Strava athlete ID 查詢 TCU 會員資料（呼叫後端 binding-status API，與 TCU小幫手 一致） */
 export async function getTCUMemberByStravaId(athleteId: number): Promise<TCUMemberProfile | null> {
-  const { data: bindings, error: bindingError } = await supabase
-    .from('strava_member_bindings')
-    .select('tcu_member_email, tcu_account')
-    .eq('strava_id', String(athleteId))
-    .limit(1);
-  if (bindingError) console.error('[TCU] strava_member_bindings error:', bindingError);
-  if (!bindings || bindings.length === 0) return null;
-  const { tcu_member_email, tcu_account } = bindings[0];
-  let query = supabase
-    .from('tcu_members')
-    .select('email, name, account, nickname, team, tcu_id, member_type, profile_photo, gender, birthday, nationality, phone, address, emergency_contact, emergency_phone, emergency_relation, self_intro, skills');
-  if (tcu_account) {
-    query = query.eq('account', tcu_account);
-  } else if (tcu_member_email) {
-    query = query.eq('email', tcu_member_email);
-  } else {
-    return null;
+  const bases = [
+    import.meta.env.VITE_API_URL,
+    import.meta.env.VITE_BACKUP_API_URL,
+  ].filter(Boolean).map((u: string) => u.replace(/\/$/, ''));
+
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${base}/api/auth/binding-status/${athleteId}`);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.isBound && data.member_data && Object.keys(data.member_data).length > 0) {
+        return data.member_data as TCUMemberProfile;
+      }
+      return null;
+    } catch (err) {
+      console.warn('[TCU] binding-status error:', base, err);
+    }
   }
-  const { data, error: memberError } = await query.limit(1);
-  if (memberError) console.error('[TCU] tcu_members error:', memberError);
-  return data?.[0] ?? null;
+  return null;
 }
 
 /** 取得官方賽事（published，日期倒序） */
