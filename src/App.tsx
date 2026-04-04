@@ -651,16 +651,21 @@ function RankingScreen() {
       {/* 個人排名 Hero */}
       {isLoggedIn && myEntry && (
         <section className="flex flex-col items-center mb-10">
-          <div className="relative mb-8">
+          <div className="relative mb-4">
             <div className="w-44 h-44 rounded-full border-4 border-primary flex items-center justify-center p-2 shadow-[0_0_30px_rgba(253,228,43,0.3)]">
               <div className="w-full h-full rounded-full overflow-hidden border-4 border-surface-container">
                 <img src={athlete?.profile ?? myEntry.profile ?? undefined} alt="Me" className="w-full h-full object-cover" />
               </div>
             </div>
-            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary font-headline italic-bold text-2xl px-8 py-1.5 rounded-full kinetic-slant shadow-xl">
-              {myEntry.elapsedTime !== null ? `RANK #${myRank}` : '已報名'}
-            </div>
+            {myEntry.elapsedTime !== null && (
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary font-headline italic-bold text-2xl px-8 py-1.5 rounded-full kinetic-slant shadow-xl">
+                RANK #{myRank}
+              </div>
+            )}
           </div>
+          {myEntry.elapsedTime === null && (
+            <span className="text-xs text-on-surface-variant/60 font-medium tracking-widest uppercase mb-4">已報名・尚未完成</span>
+          )}
 
           <div className="grid grid-cols-2 gap-4 w-full mt-4">
             <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-secondary flex flex-col justify-between shadow-lg">
