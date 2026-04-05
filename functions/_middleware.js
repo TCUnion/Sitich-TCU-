@@ -33,18 +33,25 @@ function injectOG(html, { title, description, image, ogUrl }) {
 
 /** 從三張表合併出 OG 資料（同 useSegmentData 優先序） */
 async function fetchSegmentOG(supabaseUrl, headers, segId) {
-  const [metaRes, segRes, teamRes] = await Promise.all([
-    fetch(`${supabaseUrl}/rest/v1/segment_metadata?strava_id=eq.${segId}&select=race_description,og_image,team_name&limit=1`, { headers }),
-    fetch(`${supabaseUrl}/rest/v1/segments_new?strava_id=eq.${segId}&select=name,distance,og_image&limit=1`, { headers }),
-    fetch(`${supabaseUrl}/rest/v1/team_races?strava_id=eq.${segId}&select=name,og_image&limit=1`, { headers }),
+  // 1. 先查 segments_new（用 strava_id），取得 DB id
+  const segRes = await fetch(
+    `${supabaseUrl}/rest/v1/segments_new?strava_id=eq.${segId}&select=id,name,distance,og_image&limit=1`,
+    { headers }
+  );
+  const segArr = await segRes.json();
+  const seg = segArr[0] ?? {};
+  if (!seg.name) return null;
+
+  const dbId = seg.id;
+
+  // 2. 用 DB id 查 team_races 和 segment_metadata（並行）
+  const [teamRes, metaRes] = await Promise.all([
+    fetch(`${supabaseUrl}/rest/v1/team_races?segment_id=eq.${dbId}&select=name,og_image&limit=1`, { headers }),
+    fetch(`${supabaseUrl}/rest/v1/segment_metadata?segment_id=eq.${dbId}&select=race_description,og_image,team_name&limit=1`, { headers }),
   ]);
-  const [metaArr, segArr, teamArr] = await Promise.all([
-    metaRes.json(), segRes.json(), teamRes.json(),
-  ]);
-  const meta = metaArr[0] ?? {};
-  const seg  = segArr[0]  ?? {};
+  const [teamArr, metaArr] = await Promise.all([teamRes.json(), metaRes.json()]);
   const team = teamArr[0] ?? {};
-  if (!seg.name && !team.name) return null;
+  const meta = metaArr[0] ?? {};
 
   const title      = team.name ?? seg.name ?? 'TCU CHALLENGE';
   const distanceKm = seg.distance ? `${(seg.distance / 1000).toFixed(1)} km` : '';
@@ -58,20 +65,25 @@ async function fetchSegmentOG(supabaseUrl, headers, segId) {
 /** 取精選挑戰（end_date 最近且仍有效的第一筆） */
 async function fetchFeaturedOG(supabaseUrl, headers) {
   const today = new Date().toISOString().slice(0, 10);
-  // 先抓 segments_new（is_active，end_date 正序）
-  const [segRes, teamRes] = await Promise.all([
-    fetch(`${supabaseUrl}/rest/v1/segments_new?is_active=eq.true&select=strava_id,name,distance,og_image,end_date&order=end_date.asc&limit=20`, { headers }),
-    fetch(`${supabaseUrl}/rest/v1/team_races?is_active=eq.true&select=strava_id,name,og_image`, { headers }),
-  ]);
-  const [segs, teams] = await Promise.all([segRes.json(), teamRes.json()]);
-
-  const teamMap = new Map((teams ?? []).map(t => [t.strava_id, t]));
+  // 先抓 segments_new（is_active，end_date 正序），取得 id 和 strava_id
+  const segRes = await fetch(
+    `${supabaseUrl}/rest/v1/segments_new?is_active=eq.true&select=id,strava_id,name,distance,og_image,end_date&order=end_date.asc&limit=20`,
+    { headers }
+  );
+  const segs = await segRes.json();
 
   // 找第一個 end_date >= today（或無 end_date）的路段
   const featured = (segs ?? []).find(s => !s.end_date || s.end_date >= today) ?? segs?.[0];
   if (!featured) return null;
 
-  const team        = teamMap.get(featured.strava_id) ?? {};
+  // 用 DB id 查 team_races
+  const teamRes = await fetch(
+    `${supabaseUrl}/rest/v1/team_races?segment_id=eq.${featured.id}&select=name,og_image&limit=1`,
+    { headers }
+  );
+  const teamArr = await teamRes.json();
+  const team = teamArr?.[0] ?? {};
+
   const title       = team.name ?? featured.name ?? 'TCU CHALLENGE';
   const distanceKm  = featured.distance ? `${(featured.distance / 1000).toFixed(1)} km` : '';
   const description = `挑戰 ${title}${distanceKm ? `，距離 ${distanceKm}` : ''}。立即報名 TCU 自行車挑戰！`;
