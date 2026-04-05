@@ -1624,6 +1624,27 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
         </div>
       </section>
 
+      {/* Race Description */}
+      {challenge.race_description && (
+        <section className="px-6 mt-6 mb-2">
+          <h3 className="font-headline italic-bold text-xl tracking-tight mb-4 uppercase">比賽敘述</h3>
+          <div className="prose prose-invert prose-sm max-w-none text-on-surface-variant leading-relaxed space-y-3
+            [&_h1]:text-on-surface [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2
+            [&_h2]:text-on-surface [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
+            [&_h3]:text-on-surface [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1
+            [&_p]:mb-3 [&_p]:leading-relaxed
+            [&_strong]:text-on-surface [&_strong]:font-semibold
+            [&_em]:text-on-surface-variant
+            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1
+            [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1
+            [&_li]:leading-relaxed
+            [&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_blockquote]:text-primary [&_blockquote]:italic [&_blockquote]:my-3
+            [&_hr]:border-white/10 [&_hr]:my-4">
+            <ReactMarkdown>{challenge.race_description}</ReactMarkdown>
+          </div>
+        </section>
+      )}
+
       {/* Race Specs Bento Grid */}
       <section className="px-6 -mt-8 relative z-10 grid grid-cols-2 gap-4">
         <div className="bg-surface-container-low p-6 rounded-2xl border-l-4 border-secondary flex flex-col justify-between shadow-2xl">
@@ -1699,27 +1720,6 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
             <div className="w-full h-64">
               <MapThumbnail encoded={challenge.polyline} />
             </div>
-          </div>
-        </section>
-      )}
-
-      {/* Race Description */}
-      {challenge.race_description && (
-        <section className="px-6 mt-10 mb-12">
-          <h3 className="font-headline italic-bold text-xl tracking-tight mb-4 uppercase">比賽敘述</h3>
-          <div className="prose prose-invert prose-sm max-w-none text-on-surface-variant leading-relaxed space-y-3
-            [&_h1]:text-on-surface [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2
-            [&_h2]:text-on-surface [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
-            [&_h3]:text-on-surface [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1
-            [&_p]:mb-3 [&_p]:leading-relaxed
-            [&_strong]:text-on-surface [&_strong]:font-semibold
-            [&_em]:text-on-surface-variant
-            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1
-            [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1
-            [&_li]:leading-relaxed
-            [&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_blockquote]:text-primary [&_blockquote]:italic [&_blockquote]:my-3
-            [&_hr]:border-white/10 [&_hr]:my-4">
-            <ReactMarkdown>{challenge.race_description}</ReactMarkdown>
           </div>
         </section>
       )}
