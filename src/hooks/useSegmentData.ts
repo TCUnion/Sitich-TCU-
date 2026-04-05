@@ -5,6 +5,7 @@ export interface StravaSegment {
   id: number;
   strava_id: number;
   name: string;
+  displayName: string;  // 活動名稱（team_races.name > segments_new.name）
   distance: number;
   average_grade: number;
   maximum_grade: number;
@@ -75,6 +76,7 @@ export function useSegmentData(): UseSegmentDataReturn {
               id: s.id,
               strava_id: s.strava_id || s.id,
               name: s.name,
+              displayName: raceInfo?.name || s.name,
               distance: s.distance || 0,
               average_grade: s.average_grade || 0,
               maximum_grade: s.maximum_grade || 0,

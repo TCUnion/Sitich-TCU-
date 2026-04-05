@@ -1797,7 +1797,7 @@ function AdminScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
                     : 'bg-surface-container border-white/5 text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
-                <span className="font-medium">{seg.name}</span>
+                <span className="font-medium">{seg.displayName}</span>
                 {seg.team && <span className="text-[10px] ml-2 text-on-surface-variant">{seg.team}</span>}
               </button>
             ))}
@@ -1808,7 +1808,7 @@ function AdminScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
         {selected && (
           <div className="space-y-4">
             <div className="h-px bg-white/5" />
-            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">編輯：{selected.name}</p>
+            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">編輯：{selected.displayName}</p>
 
             {/* OG Image URL */}
             <div>
