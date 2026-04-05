@@ -171,9 +171,10 @@ export interface MyBestEffort {
   elapsedTime: number;
   activityId: number | null;
   activityName: string | null;
+  count: number;
 }
 
-/** 取得指定運動員在所有路段的最佳成績（含 activity_id，來自 segment_efforts_v2） */
+/** 取得指定運動員在所有路段的最佳成績（含 activity_id 與挑戰次數，來自 segment_efforts_v2） */
 export async function getMySegmentBestEfforts(athleteId: number): Promise<Map<number, MyBestEffort>> {
   const { data } = await supabase
     .from('segment_efforts_v2')
@@ -184,12 +185,25 @@ export async function getMySegmentBestEfforts(athleteId: number): Promise<Map<nu
   (data ?? []).forEach(r => {
     const segId = Number(r.segment_id);
     const existing = map.get(segId);
-    if (!existing || Number(r.elapsed_time) < existing.elapsedTime) {
+    if (!existing) {
       map.set(segId, {
         elapsedTime: Number(r.elapsed_time),
         activityId: r.activity_id ? Number(r.activity_id) : null,
         activityName: null,
+        count: 1,
       });
+    } else {
+      const count = existing.count + 1;
+      if (Number(r.elapsed_time) < existing.elapsedTime) {
+        map.set(segId, {
+          elapsedTime: Number(r.elapsed_time),
+          activityId: r.activity_id ? Number(r.activity_id) : null,
+          activityName: null,
+          count,
+        });
+      } else {
+        map.set(segId, { ...existing, count });
+      }
     }
   });
   return map;

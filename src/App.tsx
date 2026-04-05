@@ -1444,10 +1444,10 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
         ) : (
           <div className="space-y-3">
             {mySegments.map(seg => {
-              const elapsedTime = myTimesMap.get(seg.id) ?? null;
               const bestEffort = myBestEfforts.get(seg.strava_id) ?? null;
-              const activityName = bestEffort?.activityName ?? null;
+              const elapsedTime = myTimesMap.get(seg.id) ?? bestEffort?.elapsedTime ?? null;
               const activityId = bestEffort?.activityId ?? null;
+              const challengeCount = bestEffort?.count ?? 0;
               const now = new Date();
               const endDate = seg.end_date ? new Date(seg.end_date) : null;
               const isActive = !endDate || endDate >= now;
@@ -1460,6 +1460,7 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
                     <p className="text-[10px] text-on-surface-variant mt-0.5 truncate">
                       {seg.name}
                       {seg.end_date && ` · 截止 ${new Date(seg.end_date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}`}
+                      {challengeCount > 0 && ` · 挑戰 ${challengeCount} 次`}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
