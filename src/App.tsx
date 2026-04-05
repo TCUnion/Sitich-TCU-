@@ -403,7 +403,6 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
     } catch {
       setShareToast('複製失敗，請手動複製連結');
     }
-    setTimeout(() => setShareToast(null), 3000);
   }
 
   // 深度連結：?s=<stravaId> → 直接開啟對應賽事詳情
@@ -442,10 +441,19 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
       exit={{ opacity: 0, y: -20 }}
       className="px-4 space-y-8"
     >
-      {/* Share Toast */}
+      {/* Share Modal */}
       {shareToast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-surface-container-high text-on-surface text-xs font-medium px-4 py-2 rounded-full shadow-lg border border-white/10 whitespace-nowrap">
-          {shareToast}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-8 mx-6 max-w-sm w-full flex flex-col items-center gap-4">
+            <div className="text-3xl">🎉</div>
+            <p className="text-on-surface text-sm font-medium text-center">{shareToast}</p>
+            <button
+              onClick={() => setShareToast(null)}
+              className="mt-2 px-6 py-2 rounded-full bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              關閉
+            </button>
+          </div>
         </div>
       )}
 
@@ -1597,7 +1605,6 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
     } catch {
       setShareToast('複製失敗，請手動複製連結');
     }
-    setTimeout(() => setShareToast(null), 3000);
   }
 
   useEffect(() => {
@@ -1634,10 +1641,19 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
       exit={{ opacity: 0 }}
       className="pb-32"
     >
-      {/* Share Toast */}
+      {/* Share Modal */}
       {shareToast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-surface-container-high text-on-surface text-xs font-medium px-4 py-2 rounded-full shadow-lg border border-white/10">
-          {shareToast}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-8 mx-6 max-w-sm w-full flex flex-col items-center gap-4">
+            <div className="text-3xl">🎉</div>
+            <p className="text-on-surface text-sm font-medium text-center">{shareToast}</p>
+            <button
+              onClick={() => setShareToast(null)}
+              className="mt-2 px-6 py-2 rounded-full bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              關閉
+            </button>
+          </div>
         </div>
       )}
 
