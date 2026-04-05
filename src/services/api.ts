@@ -339,7 +339,7 @@ export interface SegmentEffortEntry {
   elapsed_time: number;
   average_watts: number | null;
   activity_id: number | null;
-  start_date_local: string | null;
+  start_date: string | null;
 }
 
 /** 取得路段成績（segment_efforts_v2），回傳每位運動員最佳時間與嘗試次數 */
@@ -350,11 +350,11 @@ export async function getSegmentEfforts(
 ): Promise<{ bestEfforts: Map<number, SegmentEffortEntry>; attemptCounts: Map<number, number> }> {
   let query = supabase
     .from('segment_efforts_v2')
-    .select('athlete_id, elapsed_time, average_watts, activity_id, start_date_local')
+    .select('athlete_id, elapsed_time, average_watts, activity_id, start_date')
     .eq('segment_id', stravaId)
     .gt('elapsed_time', 0);
-  if (startDate) query = query.gte('start_date_local', startDate);
-  if (endDate) query = query.lte('start_date_local', endDate + 'T23:59:59');
+  if (startDate) query = query.gte('start_date', startDate);
+  if (endDate) query = query.lte('start_date', endDate);
   const { data } = await query;
   const bestEfforts = new Map<number, SegmentEffortEntry>();
   const attemptCounts = new Map<number, number>();
