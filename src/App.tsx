@@ -392,6 +392,19 @@ function segmentToChallenge(s: StravaSegment): Challenge {
 
 function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
   const { segments, isLoading } = useSegmentData();
+  const [shareToast, setShareToast] = useState<string | null>(null);
+
+  async function handleCardShare(e: React.MouseEvent, seg: StravaSegment) {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/?s=${seg.strava_id}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareToast('連結已複製！可貼到任何地方分享 🎉');
+    } catch {
+      setShareToast('複製失敗，請手動複製連結');
+    }
+    setTimeout(() => setShareToast(null), 3000);
+  }
 
   // 深度連結：?s=<stravaId> → 直接開啟對應賽事詳情
   useEffect(() => {
@@ -429,6 +442,13 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
       exit={{ opacity: 0, y: -20 }}
       className="px-4 space-y-8"
     >
+      {/* Share Toast */}
+      {shareToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-surface-container-high text-on-surface text-xs font-medium px-4 py-2 rounded-full shadow-lg border border-white/10 whitespace-nowrap">
+          {shareToast}
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="relative rounded-2xl overflow-hidden aspect-[1200/630] flex items-end p-6 bg-surface-container-low shadow-xl">
         <div className="absolute inset-0 z-0">
@@ -477,10 +497,12 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
             const challenge = segmentToChallenge(seg);
 
             return (
-              <button
+              <div
                 key={seg.id}
                 onClick={() => onNavigate('race-detail', challenge)}
-                className={`w-full bg-surface-container rounded-2xl overflow-hidden flex items-center gap-3 p-3 text-left transition-all active:scale-[0.98] border border-surface-container-highest/40 ${
+                role="button"
+                tabIndex={0}
+                className={`w-full bg-surface-container rounded-2xl overflow-hidden flex items-center gap-3 p-3 text-left transition-all active:scale-[0.98] border border-surface-container-highest/40 cursor-pointer ${
                   isExpired ? 'opacity-40 grayscale' : 'card-glow'
                 }`}
               >
@@ -549,11 +571,15 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
                   })()}
                 </div>
 
-                {/* 右側按鈕 */}
-                <div className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-full ${isExpired ? 'bg-white/10' : 'bg-[#FC5200]'}`}>
-                  <Plus size={14} className="text-white" />
-                </div>
-              </button>
+                {/* 右側分享按鈕 */}
+                <button
+                  onClick={(e) => handleCardShare(e, seg)}
+                  className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                  aria-label="分享"
+                >
+                  <Share2 size={14} className="text-white/70" />
+                </button>
+              </div>
             );
           })}
         </div>
@@ -1553,7 +1579,11 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
     };
     setMeta('og:title', title);
     setMeta('og:description', challenge.reward || 'TCU 自行車挑戰賽');
-    if (challenge.image) setMeta('og:image', challenge.image);
+    if (challenge.image) {
+      setMeta('og:image', challenge.image);
+      setMeta('og:image:width', '1200');
+      setMeta('og:image:height', '630');
+    }
     return () => { document.title = 'TCU CHALLENGE'; };
   }, [challenge]);
 
@@ -1561,18 +1591,13 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
     const shareUrl = challenge.stravaId
       ? `${window.location.origin}/?s=${challenge.stravaId}`
       : window.location.href;
-    const title = `${challenge.title} | TCU CHALLENGE`;
-    const text = challenge.race_description
-      ? challenge.race_description
-      : `挑戰 ${challenge.title}，距離 ${challenge.distance}！快來一起報名！`;
-    const shareData = { title, text, url: shareUrl };
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch { /* user cancelled */ }
-    } else {
+    try {
       await navigator.clipboard.writeText(shareUrl);
-      setShareToast('連結已複製！');
-      setTimeout(() => setShareToast(null), 2500);
+      setShareToast('連結已複製！可貼到任何地方分享 🎉');
+    } catch {
+      setShareToast('複製失敗，請手動複製連結');
     }
+    setTimeout(() => setShareToast(null), 3000);
   }
 
   useEffect(() => {
