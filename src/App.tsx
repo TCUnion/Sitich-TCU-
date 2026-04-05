@@ -39,6 +39,8 @@ import {
   Save,
   X,
   CalendarDays,
+  Ruler,
+  Sparkles,
 } from 'lucide-react';
 
 import { Screen, Challenge, User } from './types';
@@ -212,13 +214,9 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
       {/* Top App Bar */}
       <header className="fixed top-0 w-full z-50 flex items-center px-4 h-16 bg-surface/90 backdrop-blur-md border-b border-surface-container">
         <div className="flex items-center gap-4 w-full">
-          {isDetail ? (
-            <button onClick={onBack} className="p-2 hover:bg-surface-container rounded-full transition-colors">
+          {isDetail && (
+            <button onClick={onBack} className="w-11 h-11 flex items-center justify-center hover:bg-surface-container rounded-full transition-colors">
               <ChevronLeft className="w-6 h-6 text-on-surface" />
-            </button>
-          ) : (
-            <button className="p-2 hover:bg-surface-container rounded-full transition-colors">
-              <MenuIcon className="w-6 h-6 text-primary" />
             </button>
           )}
           <h1 className="text-2xl font-headline italic-bold uppercase text-primary tracking-tighter">
@@ -483,7 +481,7 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
       {shareToast && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
           <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-6 w-full max-w-sm flex flex-col items-center gap-4">
-            <div className="text-3xl">🎉</div>
+            <Sparkles className="w-8 h-8 text-primary" />
             <p className="text-on-surface text-sm font-medium text-center">{shareToast}</p>
             {copiedUrl && (
               <div className="w-full bg-black/30 rounded-xl px-4 py-3 border border-white/10 max-h-52 overflow-y-auto">
@@ -529,13 +527,22 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
 
       {/* Segments */}
       <section className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-xl italic-bold font-headline uppercase tracking-wide">進行中挑戰</h3>
-          <button className="text-[10px] text-primary italic-bold uppercase">VIEW ALL</button>
-        </div>
+        <h3 className="text-xl italic-bold font-headline uppercase tracking-wide">進行中挑戰</h3>
 
         {isLoading && (
-          <div className="text-center text-on-surface/50 py-8 text-sm">載入中...</div>
+          <div className="flex flex-col gap-3">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-full bg-surface-container rounded-2xl overflow-hidden flex items-center gap-3 p-3 animate-pulse">
+                <div className="w-[72px] h-[72px] rounded-xl bg-surface-container-high shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-2.5 bg-surface-container-high rounded w-1/3" />
+                  <div className="h-3 bg-surface-container-high rounded w-3/4" />
+                  <div className="h-2.5 bg-surface-container-high rounded w-1/2" />
+                </div>
+                <div className="w-11 h-11 rounded-full bg-surface-container-high shrink-0" />
+              </div>
+            ))}
+          </div>
         )}
         {!isLoading && sorted.length === 0 && (
           <div className="text-center text-on-surface/50 py-8 text-sm">目前無進行中挑戰</div>
@@ -596,7 +603,7 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
 
                   {/* 距離 · 坡度 */}
                   <div className="flex items-center gap-1 text-[11px] text-on-surface-variant">
-                    <Clock size={10} className="shrink-0" />
+                    <Ruler size={10} className="shrink-0" />
                     <span>
                       {seg.distance ? `${(seg.distance / 1000).toFixed(1)} km` : '—'}
                       {' · '}
@@ -625,7 +632,7 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
                 {/* 右側分享按鈕 */}
                 <button
                   onClick={(e) => handleCardShare(e, seg)}
-                  className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                  className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
                   aria-label="分享"
                 >
                   <Share2 size={14} className="text-white/70" />
@@ -859,7 +866,16 @@ function RankingScreen() {
           </div>
 
           {isLoading && (
-            <div className="text-center text-on-surface/50 py-12 text-sm">載入中...</div>
+            <div className="space-y-3">
+              {[0, 1, 2, 4].map(i => (
+                <div key={i} className="flex items-center p-4 rounded-2xl bg-surface-container-low animate-pulse gap-4">
+                  <div className="w-12 h-6 bg-surface-container-high rounded" />
+                  <div className="w-10 h-10 rounded-full bg-surface-container-high" />
+                  <div className="flex-1 h-4 bg-surface-container-high rounded w-1/2" />
+                  <div className="w-16 h-4 bg-surface-container-high rounded" />
+                </div>
+              ))}
+            </div>
           )}
           {!isLoading && rankingEntries.length === 0 && (
             <div className="text-center text-on-surface/50 py-12 text-sm">尚無報名者</div>
@@ -885,7 +901,7 @@ function RankingScreen() {
 
 function ChallengerRow({ rank, name, profile, time, isUser }: { rank: string, name: string, profile?: string, time: string, isUser?: boolean }) {
   return (
-    <div className={`flex items-center p-4 rounded-2xl transition-all ${isUser ? 'bg-surface-container-highest border-l-4 border-secondary shadow-lg' : 'bg-surface-container-low hover:bg-surface-container'}`}>
+    <div className={`flex items-center p-4 rounded-2xl transition-all cursor-pointer ${isUser ? 'bg-surface-container-highest border-l-4 border-secondary shadow-lg' : 'bg-surface-container-low hover:bg-surface-container'}`}>
       <span className={`font-headline italic-bold text-2xl w-12 ${isUser ? 'text-secondary' : 'text-on-surface-variant/40'}`}>{rank}</span>
       <div className="w-10 h-10 rounded-full overflow-hidden mr-4 border border-surface-container-highest">
         {profile ? (
@@ -1338,7 +1354,17 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
           <span className="ml-auto text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{mySegmentIds.length} 場</span>
         </div>
         {loadingRecords ? (
-          <div className="text-center text-on-surface-variant text-sm py-8">載入中...</div>
+          <div className="space-y-3">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="bg-surface-container-high rounded-2xl p-4 border border-white/5 flex items-center gap-4 animate-pulse">
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-surface-container-highest rounded w-3/4" />
+                  <div className="h-2.5 bg-surface-container-highest rounded w-1/2" />
+                </div>
+                <div className="w-16 h-6 bg-surface-container-highest rounded-full shrink-0" />
+              </div>
+            ))}
+          </div>
         ) : mySegments.length === 0 ? (
           <div className="bg-surface-container-high rounded-2xl p-6 text-center border border-white/5">
             <ClipboardCheck className="w-8 h-8 text-on-surface-variant/40 mx-auto mb-3" />
@@ -1727,7 +1753,7 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
       {shareToast && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
           <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-6 w-full max-w-sm flex flex-col items-center gap-4">
-            <div className="text-3xl">🎉</div>
+            <Sparkles className="w-8 h-8 text-primary" />
             <p className="text-on-surface text-sm font-medium text-center">{shareToast}</p>
             {copiedUrl && (
               <div className="w-full bg-black/30 rounded-xl px-4 py-3 border border-white/10 max-h-52 overflow-y-auto">
@@ -1770,7 +1796,7 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
           </h2>
           <button
             onClick={handleShare}
-            className="shrink-0 mt-0.5 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            className="shrink-0 mt-0.5 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
             aria-label="分享"
           >
             <Share2 className="w-4 h-4 text-on-surface-variant" />
@@ -1944,7 +1970,7 @@ function AdminScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pb-32">
       {/* Header */}
       <div className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-white/5 flex items-center gap-3 px-4 py-4">
-        <button onClick={() => onNavigate('profile')} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+        <button onClick={() => onNavigate('profile')} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors cursor-pointer">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <h1 className="font-headline italic-bold text-lg uppercase tracking-tight">後台管理</h1>
