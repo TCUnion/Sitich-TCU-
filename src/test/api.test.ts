@@ -19,10 +19,47 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({ from: mockFrom }),
 }));
 
-import { getSegmentRankMap, getMySegmentBestEfforts } from '../services/api';
+import { getSegmentRankMap, getMySegmentBestEfforts, getUpcomingCyclingEvents } from '../services/api';
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+// ============================================================
+// getUpcomingCyclingEvents
+// ============================================================
+describe('getUpcomingCyclingEvents', () => {
+  const MOCK_EVENTS = [
+    { id: 'evt-5',                       title: '136縣道練車團',                              date: '2026-04-05', time: '06:00', distance: 30,  elevation: 200, pace: '中', max_participants: 20, cover_image: null, region: '南投', tags: [] },
+    { id: 'evt-1775032024703-rr2z1',      title: '2026 DEDA Ride 國王盃：中寮約騎大挑戰',    date: '2026-04-12', time: '07:00', distance: 60,  elevation: 800, pace: '快', max_participants: 50, cover_image: null, region: '南投', tags: ['挑戰賽'] },
+    { id: 'evt-6',                        title: '日月潭環湖輕騎行',                           date: '2026-04-13', time: '08:00', distance: 35,  elevation: 300, pace: '輕鬆', max_participants: 30, cover_image: null, region: '南投', tags: [] },
+  ];
+
+  it('回傳的清單包含 4/12 活動', async () => {
+    mockFrom.mockReturnValue(createChain({ data: MOCK_EVENTS, error: null }));
+    const events = await getUpcomingCyclingEvents();
+    const apr12 = events.find(e => e.date === '2026-04-12');
+    expect(apr12).toBeDefined();
+    expect(apr12?.title).toBe('2026 DEDA Ride 國王盃：中寮約騎大挑戰');
+    expect(apr12?.time).toBe('07:00');
+  });
+
+  it('Supabase 回傳錯誤時 throw', async () => {
+    mockFrom.mockReturnValue(createChain({ data: null, error: new Error('DB error') }));
+    await expect(getUpcomingCyclingEvents()).rejects.toThrow('DB error');
+  });
+
+  it('無資料時回傳空陣列', async () => {
+    mockFrom.mockReturnValue(createChain({ data: null, error: null }));
+    const events = await getUpcomingCyclingEvents();
+    expect(events).toEqual([]);
+  });
+
+  it('回傳筆數不超過 limit', async () => {
+    mockFrom.mockReturnValue(createChain({ data: MOCK_EVENTS.slice(0, 2), error: null }));
+    const events = await getUpcomingCyclingEvents(2);
+    expect(events.length).toBeLessThanOrEqual(2);
+  });
 });
 
 // ============================================================
