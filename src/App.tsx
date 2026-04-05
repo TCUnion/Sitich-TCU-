@@ -1542,40 +1542,47 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
         </div>
       )}
 
-      {/* Hero Section */}
-      <section className="relative aspect-[1200/630] w-full overflow-hidden">
+      {/* Hero */}
+      <section className="mx-4 mt-4 rounded-2xl overflow-hidden aspect-[1200/630] relative">
         <img
           src={challenge.image || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'}
           alt={challenge.title}
           className="w-full h-full object-cover grayscale-[0.3] brightness-[0.7]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
-        {/* Share button */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         <button
           onClick={handleShare}
-          className="absolute top-14 right-4 bg-black/30 backdrop-blur-sm text-white p-2.5 rounded-full border border-white/20 hover:bg-black/50 transition-colors"
+          className="absolute top-3 right-3 bg-black/30 backdrop-blur-sm text-white p-2.5 rounded-full border border-white/20 hover:bg-black/50 transition-colors"
           aria-label="分享"
         >
           <Share2 className="w-4 h-4" />
         </button>
-        <div className="absolute bottom-8 left-6 right-6">
-          {challenge.status === 'hot' && (
-            <div className="inline-flex items-center gap-2 bg-tertiary px-3 py-1 rounded-sm mb-4 shadow-lg">
-              <Flame className="w-3 h-3 text-on-tertiary fill-current" />
-              <span className="text-[10px] italic-bold tracking-widest text-on-tertiary font-headline uppercase">HOT</span>
-            </div>
-          )}
-          <h2 className="text-4xl md:text-6xl font-headline italic-bold leading-tight tracking-tighter uppercase">
-            {challenge.title.split(' ').map((word, i) => (
-              <span key={i} className="block">{word}</span>
-            ))}
-          </h2>
-        </div>
+        {challenge.status === 'hot' && (
+          <div className="absolute top-3 left-3 inline-flex items-center gap-2 bg-tertiary px-3 py-1 rounded-sm shadow-lg">
+            <Flame className="w-3 h-3 text-on-tertiary fill-current" />
+            <span className="text-[10px] italic-bold tracking-widest text-on-tertiary font-headline uppercase">HOT</span>
+          </div>
+        )}
       </section>
 
-      {/* Race Description */}
+      {/* 標題 */}
+      <div className="mx-4 mt-3 bg-surface-container rounded-2xl px-5 py-4">
+        <h2 className="text-2xl font-headline italic-bold leading-tight tracking-tighter uppercase">
+          {challenge.title.split(' ').map((word, i) => (
+            <span key={i} className="block">{word}</span>
+          ))}
+        </h2>
+        {(challenge.startDate || challenge.time) && (
+          <div className="flex items-center gap-1.5 mt-2 text-[11px] text-on-surface-variant">
+            <CalendarDays size={10} className="shrink-0" />
+            <span>{formatDateRange(challenge.startDate, challenge.time)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* 內文 */}
       {challenge.race_description && (
-        <section className="px-6 mt-6 mb-2">
+        <div className="mx-4 mt-3 bg-surface-container rounded-2xl px-5 py-4">
           <div className="prose prose-invert prose-sm max-w-none text-on-surface-variant leading-relaxed space-y-3
             [&_h1]:text-on-surface [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2
             [&_h2]:text-on-surface [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
@@ -1590,35 +1597,31 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
             [&_hr]:border-white/10 [&_hr]:my-4">
             <ReactMarkdown>{challenge.race_description}</ReactMarkdown>
           </div>
-        </section>
+        </div>
       )}
 
-      {/* Race Specs Bento Grid */}
-      <section className="px-6 -mt-8 relative z-10 grid grid-cols-2 gap-4">
-        <div className="bg-surface-container-low p-6 rounded-2xl border-l-4 border-secondary flex flex-col justify-between shadow-2xl">
-          <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mb-2">Distance</span>
-          <div>
-            <span className="text-4xl font-headline italic-bold text-on-surface">{challenge.distance.split(' ')[0]}</span>
-            <span className="text-lg font-headline italic-bold text-secondary ml-1">{challenge.distance.split(' ')[1]}</span>
-          </div>
+      {/* Distance / Elevation */}
+      <section className="mx-4 mt-3 grid grid-cols-2 gap-3">
+        <div className="bg-surface-container p-5 rounded-2xl border-l-4 border-secondary">
+          <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest block mb-1">Distance</span>
+          <span className="text-3xl font-headline italic-bold text-on-surface">{challenge.distance.split(' ')[0]}</span>
+          <span className="text-base font-headline italic-bold text-secondary ml-1">{challenge.distance.split(' ')[1]}</span>
         </div>
-        <div className="bg-surface-container-low p-6 rounded-2xl border-l-4 border-primary flex flex-col justify-between shadow-2xl">
-          <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mb-2">Elevation</span>
-          <div>
-            {challenge.elevationGainM != null ? (
-              <>
-                <span className="text-4xl font-headline italic-bold text-on-surface">{Math.round(challenge.elevationGainM)}</span>
-                <span className="text-lg font-headline italic-bold text-primary ml-1">M</span>
-              </>
-            ) : (
-              <span className="text-4xl font-headline italic-bold text-on-surface">{challenge.elevation}</span>
-            )}
-          </div>
+        <div className="bg-surface-container p-5 rounded-2xl border-l-4 border-primary">
+          <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest block mb-1">Elevation</span>
+          {challenge.elevationGainM != null ? (
+            <>
+              <span className="text-3xl font-headline italic-bold text-on-surface">{Math.round(challenge.elevationGainM)}</span>
+              <span className="text-base font-headline italic-bold text-primary ml-1">M</span>
+            </>
+          ) : (
+            <span className="text-3xl font-headline italic-bold text-on-surface">{challenge.elevation}</span>
+          )}
         </div>
       </section>
 
       {/* Stats Row */}
-      <section className="px-6 mt-4 grid grid-cols-2 gap-3">
+      <section className="mx-4 mt-3 grid grid-cols-2 gap-3">
         <div className="bg-surface-container rounded-xl p-4 border border-white/5">
           <p className="text-[9px] text-on-surface-variant uppercase tracking-widest mb-1">日期</p>
           <p className="text-sm font-bold text-on-surface">{formatDateRange(challenge.startDate, challenge.time)}</p>
@@ -1647,7 +1650,7 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
 
       {/* Route Map */}
       {challenge.polyline && (
-        <section className="px-6 mt-10">
+        <section className="mx-4 mt-3">
           <div className="bg-surface-container rounded-2xl overflow-hidden shadow-xl border border-white/5">
             <div className="flex justify-between items-center px-6 pt-5 pb-3">
               <h3 className="font-headline italic-bold text-xl tracking-tight uppercase">路線地圖</h3>
