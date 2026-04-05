@@ -874,12 +874,17 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
 
   const FALLBACK_IMG = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80';
 
+  const fmt = (d: string) => {
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? d : `${dt.getMonth() + 1}/${dt.getDate()}`;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 1.05 }}
-      className="space-y-8"
+      className="pb-20"
     >
       {/* Toast */}
       {toast && (
@@ -888,203 +893,127 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
         </div>
       )}
 
-      <header className="px-6">
-        <h1 className="italic-bold font-headline text-4xl uppercase tracking-tighter text-primary">報名賽事</h1>
-        <p className="text-on-surface-variant text-sm mt-1 font-medium">UPCOMING EVENTS</p>
-      </header>
-
-      {/* Carousel — active segments */}
-      <section className="relative">
-        <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-4 px-6 pb-4">
-          {isLoading ? (
-            <div className="min-w-[85vw] snap-center h-80 rounded-2xl bg-surface-container-low animate-pulse" />
-          ) : active.length === 0 ? (
-            <div className="min-w-[85vw] snap-center flex items-center justify-center h-48 rounded-2xl bg-surface-container-low text-on-surface-variant text-sm">
-              目前無進行中挑戰
-            </div>
-          ) : active.map(seg => {
+      {isLoading ? (
+        <div className="space-y-4 px-6 pt-6">
+          {[1, 2].map(i => <div key={i} className="h-48 rounded-2xl bg-surface-container-low animate-pulse" />)}
+        </div>
+      ) : sorted.length === 0 ? (
+        <p className="text-on-surface-variant text-sm text-center py-16">目前無挑戰資料</p>
+      ) : (
+        <div className="divide-y divide-white/5">
+          {sorted.map(seg => {
             const challenge = segmentToChallenge(seg);
             const daysLeft = getDaysRemaining(seg.end_date);
+            const isExpired = daysLeft !== null && daysLeft <= 0;
+            const isRegistered = registeredIds.has(seg.id);
+
+            const dateLabel = (() => {
+              const s = seg.start_date ? fmt(seg.start_date) : null;
+              const e = seg.end_date ? fmt(seg.end_date) : null;
+              if (s && e && s !== e) return `${s} – ${e}`;
+              return s || e || null;
+            })();
+
             return (
-              <div
-                key={seg.id}
-                onClick={() => onNavigate('race-detail', challenge)}
-                className="min-w-[85vw] snap-center relative overflow-hidden rounded-2xl bg-surface-container-low shadow-2xl group cursor-pointer"
-              >
-                <div className="absolute top-0 left-0 w-1.5 h-full z-10 bg-secondary" />
-                <div className="h-64 w-full relative">
-                  {seg.polyline ? (
-                    <MapThumbnail encoded={seg.polyline} />
-                  ) : (
-                    <img
-                      src={seg.og_image || FALLBACK_IMG}
-                      alt={seg.name}
-                      className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
-                    />
-                  )}
+              <article key={seg.id} className={isExpired ? 'opacity-40 grayscale' : ''}>
+                {/* Hero Image */}
+                <div
+                  className="aspect-[1200/630] w-full relative overflow-hidden cursor-pointer"
+                  onClick={() => onNavigate('race-detail', challenge)}
+                >
+                  <img
+                    src={seg.og_image || FALLBACK_IMG}
+                    alt={seg.description || seg.name}
+                    className="w-full h-full object-cover brightness-[0.85]"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
-                  {daysLeft !== null && daysLeft > 0 && (
-                    <div className="absolute top-4 right-4 bg-secondary text-white text-[10px] italic-bold px-3 py-1 rounded-full uppercase tracking-widest">{daysLeft} 天</div>
+                  {/* Status badge */}
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    {isExpired ? (
+                      <span className="text-[9px] font-bold text-white/70 bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-full">已結束</span>
+                    ) : daysLeft !== null ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full text-emerald-300 bg-emerald-900/60 backdrop-blur-sm shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                        <Clock size={8} />{daysLeft} 天
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div className="px-6 pt-5 pb-1 cursor-pointer" onClick={() => onNavigate('race-detail', challenge)}>
+                  <h2 className="font-headline italic-bold text-3xl leading-tight tracking-tighter uppercase">
+                    {(seg.description || seg.name).split(' ').map((word, i) => (
+                      <span key={i} className="block">{word}</span>
+                    ))}
+                  </h2>
+                  {dateLabel && (
+                    <div className="flex items-center gap-1.5 mt-2 text-[11px] text-on-surface-variant">
+                      <CalendarDays size={10} className="shrink-0" />
+                      <span>{dateLabel}</span>
+                    </div>
                   )}
                 </div>
-                <div className="p-6 -mt-16 relative z-10 glass-panel mx-2 rounded-xl mb-4 shadow-xl border border-white/5">
-                  <h2 className="italic-bold font-headline text-2xl mb-4 text-white uppercase">{seg.description || seg.name}</h2>
-                  <div className="flex justify-between items-center mb-6">
-                    <div className="flex flex-col">
-                      <span className="text-on-surface-variant text-[10px] uppercase tracking-widest">距離</span>
-                      <span className="italic-bold font-headline text-2xl text-primary">{challenge.distance}</span>
-                    </div>
-                    <div className="flex flex-col text-right">
-                      <span className="text-on-surface-variant text-[10px] uppercase tracking-widest">坡度</span>
-                      <span className="italic-bold font-headline text-2xl text-white">{challenge.elevation}</span>
+
+                {/* Race Description */}
+                {seg.race_description && (
+                  <div className="px-6 mt-4">
+                    <div className="prose prose-invert prose-sm max-w-none text-on-surface-variant leading-relaxed space-y-3
+                      [&_h1]:text-on-surface [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2
+                      [&_h2]:text-on-surface [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
+                      [&_h3]:text-on-surface [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1
+                      [&_p]:mb-3 [&_p]:leading-relaxed
+                      [&_strong]:text-on-surface [&_strong]:font-semibold
+                      [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1
+                      [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1
+                      [&_li]:leading-relaxed
+                      [&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_blockquote]:text-primary [&_blockquote]:italic [&_blockquote]:my-3
+                      [&_hr]:border-white/10 [&_hr]:my-4">
+                      <ReactMarkdown>{seg.race_description}</ReactMarkdown>
                     </div>
                   </div>
-                  {seg.end_date && (
-                    <div className="flex items-center gap-2 text-on-surface-variant text-xs mb-4">
-                      <Clock className="w-3 h-3 shrink-0" />
-                      <span>截止：{seg.end_date?.slice(0, 10)}</span>
-                    </div>
-                  )}
-                  <div className="flex gap-3">
+                )}
+
+                {/* Distance / Elevation Bento */}
+                <div className="px-6 mt-6 grid grid-cols-2 gap-4">
+                  <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-secondary">
+                    <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest block mb-1">Distance</span>
+                    <span className="text-3xl font-headline italic-bold text-on-surface">{challenge.distance.split(' ')[0]}</span>
+                    <span className="text-base font-headline italic-bold text-secondary ml-1">{challenge.distance.split(' ')[1]}</span>
+                  </div>
+                  <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-primary">
+                    <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest block mb-1">Elevation</span>
+                    {challenge.elevationGainM != null ? (
+                      <>
+                        <span className="text-3xl font-headline italic-bold text-on-surface">{Math.round(challenge.elevationGainM)}</span>
+                        <span className="text-base font-headline italic-bold text-primary ml-1">M</span>
+                      </>
+                    ) : (
+                      <span className="text-3xl font-headline italic-bold text-on-surface">{challenge.elevation}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Register Button */}
+                {!isExpired && (
+                  <div className="px-6 mt-5 mb-8">
                     <button
-                      onClick={e => { e.stopPropagation(); onNavigate('race-detail', challenge); }}
-                      className="flex-1 border border-white/20 text-white py-4 rounded-xl italic-bold font-headline uppercase tracking-widest active:scale-[0.98] transition-all flex justify-center items-center gap-2"
-                    >
-                      詳情
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); handleRegister(seg.id, seg.description || seg.name); }}
+                      onClick={() => handleRegister(seg.id, seg.description || seg.name)}
                       disabled={pendingId === seg.id}
-                      className={`flex-1 py-4 rounded-xl italic-bold font-headline uppercase tracking-widest active:scale-[0.98] transition-all flex justify-center items-center gap-2 shadow-lg ${
-                        registeredIds.has(seg.id)
-                          ? 'bg-secondary/20 text-secondary border border-secondary/40'
-                          : 'bg-primary text-on-primary shadow-primary/20'
+                      className={`w-full py-5 rounded-2xl font-headline italic-bold text-xl uppercase tracking-wider active:scale-[0.98] transition-all flex justify-center items-center gap-2 ${
+                        isRegistered
+                          ? 'bg-secondary/15 text-secondary border border-secondary/40'
+                          : 'bg-secondary text-on-secondary shadow-[0_20px_40px_rgba(134,252,136,0.2)]'
                       }`}
                     >
-                      {pendingId === seg.id ? '...' : registeredIds.has(seg.id) ? '已報名 ✓' : '立即報名'}
+                      {pendingId === seg.id ? '處理中...' : isRegistered ? '已報名 ✓ 點擊取消' : '立即報名 (CONFIRM REGISTRATION)'}
                     </button>
                   </div>
-                </div>
-              </div>
+                )}
+              </article>
             );
           })}
         </div>
-      </section>
-
-      {/* All Segments List */}
-      <section className="px-6 space-y-8">
-        <h3 className="italic-bold font-headline text-xl text-white uppercase tracking-widest">
-          所有挑戰 <span className="text-xs text-on-surface-variant font-normal">ALL CHALLENGES</span>
-        </h3>
-
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-20 rounded-2xl bg-surface-container-high animate-pulse" />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {active.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                  <span className="text-sm font-bold text-secondary uppercase tracking-wider">進行中 (Active)</span>
-                </div>
-                {active.map(seg => {
-                  const challenge = segmentToChallenge(seg);
-                  const daysLeft = getDaysRemaining(seg.end_date);
-                  const isRegistered = registeredIds.has(seg.id);
-                  return (
-                    <div
-                      key={seg.id}
-                      className="bg-surface-container-high rounded-2xl p-5 border-l-4 border-secondary shadow-lg"
-                    >
-                      <button
-                        onClick={() => onNavigate('race-detail', challenge)}
-                        className="w-full text-left"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            {daysLeft !== null && <div className="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">{daysLeft} 天</div>}
-                            <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{seg.description || seg.name}</h4>
-                            {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date?.slice(0, 10)}</p>}
-                          </div>
-                          <div className="text-right shrink-0 ml-4">
-                            <div className="italic-bold font-headline text-primary text-xl">{challenge.distance}</div>
-                            <div className="text-[10px] text-on-surface-variant">{challenge.elevation}</div>
-                          </div>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => handleRegister(seg.id, seg.description || seg.name)}
-                        disabled={pendingId === seg.id}
-                        className={`mt-4 w-full py-3 rounded-xl italic-bold font-headline text-sm uppercase tracking-widest active:scale-[0.98] transition-all ${
-                          isRegistered
-                            ? 'bg-secondary/15 text-secondary border border-secondary/30'
-                            : 'bg-primary text-on-primary'
-                        }`}
-                      >
-                        {pendingId === seg.id ? '處理中...' : isRegistered ? '已報名 ✓ 點擊取消' : '立即報名'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {expired.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-on-surface-variant" />
-                  <span className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">已結束 (Ended)</span>
-                </div>
-                {expired.map(seg => {
-                  const challenge = segmentToChallenge(seg);
-                  return (
-                    <button
-                      key={seg.id}
-                      onClick={() => onNavigate('race-detail', challenge)}
-                      className="w-full bg-surface-container-high rounded-2xl p-5 opacity-50 text-left active:scale-[0.98] transition-all"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="bg-surface-container text-on-surface-variant text-[10px] font-bold px-2 py-0.5 rounded inline-block mb-2">已結束</div>
-                          <h4 className="italic-bold font-headline text-lg text-white leading-tight uppercase">{seg.description || seg.name}</h4>
-                          {seg.end_date && <p className="text-on-surface-variant text-[10px] mt-1">截止 {seg.end_date?.slice(0, 10)}</p>}
-                        </div>
-                        <div className="text-right shrink-0 ml-4">
-                          <div className="italic-bold font-headline text-white text-xl">{challenge.distance}</div>
-                          <div className="text-[10px] text-on-surface-variant">{challenge.elevation}</div>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {active.length === 0 && expired.length === 0 && (
-              <p className="text-on-surface-variant text-sm text-center py-8">目前無挑戰資料</p>
-            )}
-          </div>
-        )}
-
-        {/* Help Section */}
-        <section className="bg-surface-container rounded-2xl p-6 flex items-center justify-between shadow-xl border border-white/5">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-tertiary/20 flex items-center justify-center">
-              <HelpCircle className="w-6 h-6 text-tertiary" />
-            </div>
-            <div>
-              <h5 className="text-white font-bold text-sm">需要幫助？</h5>
-              <p className="text-on-surface-variant text-xs">遇到報名問題嗎？</p>
-            </div>
-          </div>
-          <button className="text-primary italic-bold font-headline text-sm border-b-2 border-primary/30 pb-0.5 hover:opacity-80 transition-all">聯絡客服</button>
-        </section>
-      </section>
+      )}
     </motion.div>
   );
 }
