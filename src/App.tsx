@@ -1131,6 +1131,32 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
   const tcuAvatarUrl = tcuMember?.tcu_id ? `https://www.tsu.com.tw/upload-files/avatars/${tcuMember.tcu_id}.jpg` : null;
   const locationStr = [athlete?.city, athlete?.country].filter(Boolean).join(', ');
 
+  // 解析 skills 字串 → 雷達圖分數（A=6 B=5 C=4 D=3 E=2 Y=1）
+  const gradeToScore: Record<string, number> = { A: 6, B: 5, C: 4, D: 3, E: 2, Y: 1 };
+  const parseSkills = (skills: string | null | undefined) => {
+    const map: Record<string, number> = {};
+    if (!skills) return map;
+    skills.split('\n').forEach(line => {
+      const [key, grade] = line.split('：');
+      if (key && grade) map[key.trim()] = gradeToScore[grade.trim().toUpperCase()] ?? 0;
+    });
+    return map;
+  };
+  const skillScores = parseSkills(tcuMember?.skills);
+  // 四軸對應 key（center=100, maxRadius=80, radius = score*80/6）
+  // 最小半徑 32 避免低分點落入頭像圓圈（約 radius 28 SVG 單位）內
+  const radarR = (key: string) => { const s = skillScores[key] ?? 0; return s > 0 ? Math.max(32, s * 80 / 6) : 0; };
+  const r計時 = radarR('計時賽TT');
+  const r公路 = radarR('公路賽');
+  const r登山 = radarR('公路登山');
+  const r繞圈 = radarR('公路繞圈');
+  const hasSkills = r計時 + r公路 + r登山 + r繞圈 > 0;
+  // SVG 頂/右/底/左點
+  const pt計時  = { x: 100,          y: 100 - r計時 };
+  const pt公路  = { x: 100 + r公路,  y: 100 };
+  const pt登山  = { x: 100,          y: 100 + r登山 };
+  const pt繞圈  = { x: 100 - r繞圈,  y: 100 };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1142,16 +1168,36 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
       <section className="relative flex flex-col items-center mb-10">
         <div className="relative w-72 h-72 flex items-center justify-center">
           <svg className="w-full h-full" viewBox="0 0 200 200" overflow="visible">
+            {/* 6 concentric diamond rings: 6=outer(80px) → 1=inner(13px) */}
             <path className="text-outline-variant" d="M 100 20 L 180 100 L 100 180 L 20 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
-            <path className="text-outline-variant" d="M 100 40 L 160 100 L 100 160 L 40 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
+            <path className="text-outline-variant" d="M 100 33 L 167 100 L 100 167 L 33 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
+            <path className="text-outline-variant" d="M 100 47 L 153 100 L 100 153 L 47 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
             <path className="text-outline-variant" d="M 100 60 L 140 100 L 100 140 L 60 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
+            <path className="text-outline-variant" d="M 100 73 L 127 100 L 100 127 L 73 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
+            <path className="text-outline-variant" d="M 100 87 L 113 100 L 100 113 L 87 100 Z" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.5" />
+            {/* Ring labels 6→1 along the right side of the top axis */}
+            <text fill="rgba(255,255,255,0.45)" fontSize="6" textAnchor="start" x="103" y="23">6</text>
+            <text fill="rgba(255,255,255,0.45)" fontSize="6" textAnchor="start" x="103" y="36">5</text>
+            <text fill="rgba(255,255,255,0.45)" fontSize="6" textAnchor="start" x="103" y="50">4</text>
+            <text fill="rgba(255,255,255,0.45)" fontSize="6" textAnchor="start" x="103" y="63">3</text>
+            <text fill="rgba(255,255,255,0.45)" fontSize="6" textAnchor="start" x="103" y="76">2</text>
+            <text fill="rgba(255,255,255,0.45)" fontSize="6" textAnchor="start" x="103" y="90">1</text>
             <line className="text-outline-variant" stroke="currentColor" strokeWidth="0.5" x1="100" x2="100" y1="20" y2="180" />
             <line className="text-outline-variant" stroke="currentColor" strokeWidth="0.5" x1="20" x2="180" y1="100" y2="100" />
-            <polygon className="drop-shadow-[0_0_8px_rgba(56,175,70,0.4)]" fill="rgba(56, 175, 70, 0.2)" points="100,28 172,100 100,164 44,100" stroke="#38af46" strokeLinejoin="round" strokeWidth="2" />
-            <circle cx="100" cy="28" fill="#38af46" r="3" />
-            <circle cx="172" cy="100" fill="#38af46" r="3" />
-            <circle cx="100" cy="164" fill="#38af46" r="3" />
-            <circle cx="44" cy="100" fill="#38af46" r="3" />
+            {hasSkills && (
+              <>
+                <polygon
+                  className="drop-shadow-[0_0_8px_rgba(56,175,70,0.4)]"
+                  fill="rgba(56, 175, 70, 0.2)"
+                  points={`${pt計時.x},${pt計時.y} ${pt公路.x},${pt公路.y} ${pt登山.x},${pt登山.y} ${pt繞圈.x},${pt繞圈.y}`}
+                  stroke="#38af46" strokeLinejoin="round" strokeWidth="2"
+                />
+                <circle cx={pt計時.x} cy={pt計時.y} fill="#38af46" r="3" />
+                <circle cx={pt公路.x} cy={pt公路.y} fill="#38af46" r="3" />
+                <circle cx={pt登山.x} cy={pt登山.y} fill="#38af46" r="3" />
+                <circle cx={pt繞圈.x} cy={pt繞圈.y} fill="#38af46" r="3" />
+              </>
+            )}
             <text fill="white" fontSize="10" fontWeight="bold" textAnchor="start" x="185" y="104">公路</text>
             <text fill="white" fontSize="10" fontWeight="bold" textAnchor="middle" x="100" y="212">登山</text>
             <text fill="white" fontSize="10" fontWeight="bold" textAnchor="end" x="15" y="104">繞圈</text>
@@ -1177,6 +1223,18 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
           <p className="text-on-surface-variant text-[10px] mt-1 uppercase tracking-widest">
             Strava #{athlete?.id ?? '—'}
           </p>
+          {Object.keys(skillScores).length > 0 && (
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
+              {Object.entries(skillScores).map(([key, score]) => {
+                const grade = Object.entries(gradeToScore).find(([, v]) => v === score)?.[0] ?? '—';
+                return (
+                  <span key={key} className="text-xs text-on-surface-variant">
+                    {key} <span className="text-primary font-bold">{grade}</span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
