@@ -915,10 +915,10 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
             })();
 
             return (
-              <article key={seg.id} className={isExpired ? 'opacity-40 grayscale' : ''}>
-                {/* Hero Image */}
+              <article key={seg.id} className={`px-4 pt-4 pb-8 ${isExpired ? 'opacity-40 grayscale' : ''}`}>
+                {/* HERO */}
                 <div
-                  className="aspect-[1200/630] w-full relative overflow-hidden cursor-pointer"
+                  className="rounded-2xl overflow-hidden aspect-[1200/630] relative cursor-pointer"
                   onClick={() => onNavigate('race-detail', challenge)}
                 >
                   <img
@@ -926,9 +926,8 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                     alt={seg.description || seg.name}
                     className="w-full h-full object-cover brightness-[0.85]"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
-                  {/* Status badge */}
-                  <div className="absolute top-4 left-4 flex gap-2">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                  <div className="absolute top-3 left-3 flex gap-2">
                     {isExpired ? (
                       <span className="text-[9px] font-bold text-white/70 bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-full">已結束</span>
                     ) : daysLeft !== null ? (
@@ -939,9 +938,12 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                   </div>
                 </div>
 
-                {/* Title */}
-                <div className="px-6 pt-5 pb-1 cursor-pointer" onClick={() => onNavigate('race-detail', challenge)}>
-                  <h2 className="font-headline italic-bold text-3xl leading-tight tracking-tighter uppercase">
+                {/* 標題 */}
+                <div
+                  className="mt-3 bg-surface-container rounded-2xl px-5 py-4 cursor-pointer"
+                  onClick={() => onNavigate('race-detail', challenge)}
+                >
+                  <h2 className="font-headline italic-bold text-2xl leading-tight tracking-tighter uppercase">
                     {(seg.description || seg.name).split(' ').map((word, i) => (
                       <span key={i} className="block">{word}</span>
                     ))}
@@ -954,9 +956,9 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                   )}
                 </div>
 
-                {/* Race Description */}
+                {/* 內文 */}
                 {seg.race_description && (
-                  <div className="px-6 mt-4">
+                  <div className="mt-3 bg-surface-container rounded-2xl px-5 py-4">
                     <div className="prose prose-invert prose-sm max-w-none text-on-surface-variant leading-relaxed space-y-3
                       [&_h1]:text-on-surface [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2
                       [&_h2]:text-on-surface [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
@@ -973,14 +975,14 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                   </div>
                 )}
 
-                {/* Distance / Elevation Bento */}
-                <div className="px-6 mt-6 grid grid-cols-2 gap-4">
-                  <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-secondary">
+                {/* Distance / Elevation */}
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="bg-surface-container p-5 rounded-2xl border-l-4 border-secondary">
                     <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest block mb-1">Distance</span>
                     <span className="text-3xl font-headline italic-bold text-on-surface">{challenge.distance.split(' ')[0]}</span>
                     <span className="text-base font-headline italic-bold text-secondary ml-1">{challenge.distance.split(' ')[1]}</span>
                   </div>
-                  <div className="bg-surface-container-low p-5 rounded-2xl border-l-4 border-primary">
+                  <div className="bg-surface-container p-5 rounded-2xl border-l-4 border-primary">
                     <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest block mb-1">Elevation</span>
                     {challenge.elevationGainM != null ? (
                       <>
@@ -995,7 +997,7 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
 
                 {/* Register Button */}
                 {!isExpired && (
-                  <div className="px-6 mt-5 mb-8">
+                  <div className="mt-3">
                     <button
                       onClick={() => handleRegister(seg.id, seg.description || seg.name)}
                       disabled={pendingId === seg.id}
