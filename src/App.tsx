@@ -46,7 +46,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, refreshAthleteProfile, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getMySegmentBestEfforts, MyBestEffort, getSegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, refreshAthleteProfile, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -467,9 +467,20 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
   }, [isLoading, segments, onNavigate]);
 
   const sorted = [...segments].sort((a, b) => {
-    const dA = getDaysRemaining(a.end_date) ?? 999;
-    const dB = getDaysRemaining(b.end_date) ?? 999;
-    return dB - dA;
+    const dA = getDaysRemaining(a.end_date);
+    const dB = getDaysRemaining(b.end_date);
+    const activeA = dA === null || dA > 0;
+    const activeB = dB === null || dB > 0;
+    // 已結束排後面
+    if (activeA !== activeB) return activeA ? -1 : 1;
+    // 進行中：即將結束的排前面，無截止日（永久）排最後
+    if (activeA) {
+      if (dA === null && dB === null) return 0;
+      if (dA === null) return 1;
+      if (dB === null) return -1;
+      return dA - dB;
+    }
+    return 0;
   });
 
   const featuredSeg = sorted.find(s => {
@@ -1188,6 +1199,7 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
   const { segments } = useSegmentData();
   const [mySegmentIds, setMySegmentIds] = useState<number[]>([]);
   const [myTimesMap, setMyTimesMap] = useState<Map<number, number>>(new Map());
+  const [myBestEfforts, setMyBestEfforts] = useState<Map<number, MyBestEffort>>(new Map());
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [tcuMember, setTcuMember] = useState<TCUMemberProfile | null>(null);
   const [bindingStep, setBindingStep] = useState<'input' | 'otp' | 'success'>('input');
@@ -1204,10 +1216,12 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
       getMyRegistrations(athlete.id),
       getMySegmentElapsedTimes(athlete.id),
       getTCUMemberByStravaId(athlete.id),
-    ]).then(([ids, times, tcu]) => {
+      getMySegmentBestEfforts(athlete.id),
+    ]).then(([ids, times, tcu, efforts]) => {
       setMySegmentIds(ids);
       setMyTimesMap(times);
       setTcuMember(tcu);
+      setMyBestEfforts(efforts);
     }).finally(() => setLoadingRecords(false));
   }, [athlete?.id]);
 
@@ -1431,15 +1445,20 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
           <div className="space-y-3">
             {mySegments.map(seg => {
               const elapsedTime = myTimesMap.get(seg.id) ?? null;
+              const bestEffort = myBestEfforts.get(seg.id) ?? null;
+              const activityName = bestEffort?.activityName ?? null;
+              const activityId = bestEffort?.activityId ?? null;
               const now = new Date();
               const endDate = seg.end_date ? new Date(seg.end_date) : null;
               const isActive = !endDate || endDate >= now;
               return (
                 <div key={seg.id} className="bg-surface-container-high rounded-2xl p-4 border border-white/5 flex items-center gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm leading-snug">{seg.name}</p>
-                    <p className="text-[10px] text-on-surface-variant mt-0.5">
-                      {seg.distance ? `${(seg.distance / 1000).toFixed(1)} km` : '—'}
+                    <p className="font-medium text-sm leading-snug truncate">
+                      {activityName ?? seg.name}
+                    </p>
+                    <p className="text-[10px] text-on-surface-variant mt-0.5 truncate">
+                      {seg.name}
                       {seg.end_date && ` · 截止 ${new Date(seg.end_date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}`}
                     </p>
                   </div>
@@ -1447,7 +1466,19 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
                     {elapsedTime !== null ? (
                       <>
                         <p className="font-headline italic-bold text-primary text-lg">{formatElapsedTime(elapsedTime)}</p>
-                        <p className="text-[10px] text-on-surface-variant">完賽</p>
+                        {activityId ? (
+                          <a
+                            href={`https://www.strava.com/activities/${activityId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-end gap-0.5 text-[10px] text-primary/60 hover:text-primary transition-colors"
+                          >
+                            <ExternalLink className="w-2.5 h-2.5" />
+                            Strava
+                          </a>
+                        ) : (
+                          <p className="text-[10px] text-on-surface-variant">完賽</p>
+                        )}
                       </>
                     ) : (
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${isActive ? 'bg-tertiary/20 text-tertiary' : 'bg-outline-variant/20 text-on-surface-variant'}`}>

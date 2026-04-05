@@ -167,6 +167,34 @@ export async function getMySegmentElapsedTimes(athleteId: number): Promise<Map<n
   return map;
 }
 
+export interface MyBestEffort {
+  elapsedTime: number;
+  activityId: number | null;
+  activityName: string | null;
+}
+
+/** 取得指定運動員在所有路段的最佳成績（含活動名稱，來自 segment_efforts_v2） */
+export async function getMySegmentBestEfforts(athleteId: number): Promise<Map<number, MyBestEffort>> {
+  const { data } = await supabase
+    .from('segment_efforts_v2')
+    .select('segment_id, elapsed_time, activity_id, name')
+    .eq('athlete_id', athleteId)
+    .gt('elapsed_time', 0);
+  const map = new Map<number, MyBestEffort>();
+  (data ?? []).forEach(r => {
+    const segId = Number(r.segment_id);
+    const existing = map.get(segId);
+    if (!existing || Number(r.elapsed_time) < existing.elapsedTime) {
+      map.set(segId, {
+        elapsedTime: Number(r.elapsed_time),
+        activityId: r.activity_id ? Number(r.activity_id) : null,
+        activityName: (r.name as string | null) ?? null,
+      });
+    }
+  });
+  return map;
+}
+
 /** 登入後補齊 placeholder 姓名與頭貼（僅更新 'Athlete {id}' 類型的佔位符） */
 export async function refreshAthleteProfile(
   athleteId: number,
