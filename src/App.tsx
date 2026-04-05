@@ -1681,13 +1681,6 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
           className="w-full h-full object-cover grayscale-[0.3] brightness-[0.7]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-        <button
-          onClick={handleShare}
-          className="absolute top-3 right-3 bg-black/30 backdrop-blur-sm text-white p-2.5 rounded-full border border-white/20 hover:bg-black/50 transition-colors"
-          aria-label="分享"
-        >
-          <Share2 className="w-4 h-4" />
-        </button>
         {challenge.status === 'hot' && (
           <div className="absolute top-3 left-3 inline-flex items-center gap-2 bg-tertiary px-3 py-1 rounded-sm shadow-lg">
             <Flame className="w-3 h-3 text-on-tertiary fill-current" />
@@ -1698,11 +1691,20 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
 
       {/* 標題 */}
       <div className="mx-4 mt-3 bg-surface-container rounded-2xl px-5 py-4">
-        <h2 className="text-2xl font-headline italic-bold leading-tight tracking-tighter uppercase">
-          {challenge.title.split(' ').map((word, i) => (
-            <span key={i} className="block">{word}</span>
-          ))}
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-2xl font-headline italic-bold leading-tight tracking-tighter uppercase flex-1">
+            {challenge.title.split(' ').map((word, i) => (
+              <span key={i} className="block">{word}</span>
+            ))}
+          </h2>
+          <button
+            onClick={handleShare}
+            className="shrink-0 mt-0.5 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            aria-label="分享"
+          >
+            <Share2 className="w-4 h-4 text-on-surface-variant" />
+          </button>
+        </div>
         {(challenge.startDate || challenge.time) && (
           <div className="flex items-center gap-1.5 mt-2 text-[11px] text-on-surface-variant">
             <CalendarDays size={10} className="shrink-0" />
