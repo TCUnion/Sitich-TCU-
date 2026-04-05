@@ -46,7 +46,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -707,31 +707,35 @@ function RankingScreen() {
     }
   }, [segments, selectedSeg]);
 
-  // 取得報名清單 + segment_efforts_v2 成績（合併）
+  // 取得報名清單 + segment_efforts_v2 成績（合併，fallback segment_elapsed_times）
   useEffect(() => {
     if (!selectedSeg) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       try {
-        const [regs, { bestEfforts, attemptCounts }] = await Promise.all([
+        const [regs, { bestEfforts, attemptCounts }, elapsedTimesMap] = await Promise.all([
           getSegmentRegistrations(selectedSeg.id),
           getSegmentEfforts(
             selectedSeg.strava_id,
             selectedSeg.start_date ?? undefined,
             selectedSeg.end_date ?? undefined,
           ),
+          getSegmentElapsedTimes(selectedSeg.id),
         ]);
 
         if (!cancelled) {
           const withTime: RankingEntry[] = regs.map((r: RegistrationRecord) => {
             const effort: SegmentEffortEntry | undefined = bestEfforts.get(r.strava_athlete_id);
+            // fallback: segment_elapsed_times（無瓦數/次數資訊但覆蓋更廣）
+            const fallbackTime = elapsedTimesMap.get(r.strava_athlete_id) ?? null;
+            const elapsedTime = effort ? effort.elapsed_time : fallbackTime;
             return {
               athleteId: r.strava_athlete_id,
               name: r.athlete_name,
               profile: r.athlete_profile,
               team: r.team,
-              elapsedTime: effort ? effort.elapsed_time : null,
+              elapsedTime,
               avgWatts: effort?.average_watts ?? null,
               attemptCount: attemptCounts.get(r.strava_athlete_id) ?? 0,
               activityId: effort?.activity_id ?? null,
