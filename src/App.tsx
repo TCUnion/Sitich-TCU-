@@ -218,6 +218,26 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
   const isLogin = currentScreen === 'login';
   const isDetail = currentScreen === 'race-detail';
   const [showMenu, setShowMenu] = React.useState(false);
+  const [barsVisible, setBarsVisible] = React.useState(true);
+  const lastScrollY = React.useRef(0);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      const y = window.scrollY;
+      if (y < 50) { setBarsVisible(true); lastScrollY.current = y; return; }
+      const delta = y - lastScrollY.current;
+      if (delta > 8) setBarsVisible(false);
+      else if (delta < -8) setBarsVisible(true);
+      lastScrollY.current = y;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  React.useEffect(() => {
+    setBarsVisible(true);
+    lastScrollY.current = 0;
+  }, [currentScreen]);
 
   if (isLogin) {
     return <div className="flex flex-col min-h-screen">{children}</div>;
@@ -226,7 +246,7 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
   return (
     <div className="flex flex-col min-h-screen">
       {/* Top App Bar */}
-      <header className="fixed top-0 w-full z-50 flex items-center px-4 h-16 bg-surface/90 backdrop-blur-md border-b border-surface-container">
+      <header className={`fixed top-0 w-full z-50 flex items-center px-4 h-16 bg-surface/90 backdrop-blur-md border-b border-surface-container transition-transform duration-300 ${barsVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="flex items-center gap-4 w-full">
           {isDetail && (
             <button onClick={onBack} className="w-11 h-11 flex items-center justify-center hover:bg-surface-container rounded-full transition-colors">
@@ -283,7 +303,7 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
 
       {/* Bottom Navigation */}
       {!isDetail && (
-        <nav className="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-3 h-20 bg-surface/90 backdrop-blur-xl border-t border-surface-container rounded-t-2xl shadow-2xl">
+        <nav className={`fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-3 h-20 bg-surface/90 backdrop-blur-xl border-t border-surface-container rounded-t-2xl shadow-2xl transition-transform duration-300 ${barsVisible ? 'translate-y-0' : 'translate-y-full'}`}>
           <NavButton
             active={currentScreen === 'explore'}
             onClick={() => onNavigate('explore')}
