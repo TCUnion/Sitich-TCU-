@@ -1630,7 +1630,7 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
     const lines: string[] = [];
     lines.push(`🏆 ${challenge.title}`);
     lines.push('');
-    if (dateRange) lines.push(`📅 報名日期：${dateRange}`);
+    if (dateRange) lines.push(`📅 活動期間：${dateRange}`);
     if (challenge.distance) lines.push(`🚴 距離：${challenge.distance}`);
     if (challenge.elevation) lines.push(`⛰️ 爬升：${challenge.elevation}`);
     if (challenge.race_description) {
