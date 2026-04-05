@@ -44,7 +44,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, unregisterChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -837,19 +837,14 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
       showToast('請先登入 Strava 再報名');
       return;
     }
+    if (registeredIds.has(segmentId)) return;
     setPendingId(segmentId);
     try {
-      if (registeredIds.has(segmentId)) {
-        await unregisterChallenge(athlete.id, segmentId);
-        setRegisteredIds(prev => { const s = new Set(prev); s.delete(segmentId); return s; });
-        showToast(`已取消報名：${segmentName}`);
-      } else {
-        const name = `${athlete.firstname} ${athlete.lastname}`.trim() || `athlete ${athlete.id}`;
-        const profile = athlete.profile_medium || athlete.profile || null;
-        await registerChallenge(athlete.id, name, segmentId, profile);
-        setRegisteredIds(prev => new Set(prev).add(segmentId));
-        showToast(`報名成功：${segmentName} 🎉`);
-      }
+      const name = `${athlete.firstname} ${athlete.lastname}`.trim() || `athlete ${athlete.id}`;
+      const profile = athlete.profile_medium || athlete.profile || null;
+      await registerChallenge(athlete.id, name, segmentId, profile);
+      setRegisteredIds(prev => new Set(prev).add(segmentId));
+      showToast(`報名成功：${segmentName} 🎉`);
     } catch {
       showToast('操作失敗，請稍後再試');
     } finally {
@@ -999,15 +994,15 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
                 {!isExpired && (
                   <div className="mt-3">
                     <button
-                      onClick={() => handleRegister(seg.id, seg.description || seg.name)}
-                      disabled={pendingId === seg.id}
-                      className={`w-full py-5 rounded-2xl font-headline italic-bold text-xl uppercase tracking-wider active:scale-[0.98] transition-all flex justify-center items-center gap-2 ${
+                      onClick={() => !isRegistered && handleRegister(seg.id, seg.description || seg.name)}
+                      disabled={pendingId === seg.id || isRegistered}
+                      className={`w-full py-5 rounded-2xl font-headline italic-bold text-xl uppercase tracking-wider transition-all flex justify-center items-center gap-2 ${
                         isRegistered
-                          ? 'bg-secondary/15 text-secondary border border-secondary/40'
-                          : 'bg-secondary text-on-secondary shadow-[0_20px_40px_rgba(134,252,136,0.2)]'
+                          ? 'bg-secondary/15 text-secondary border border-secondary/40 cursor-default'
+                          : 'bg-secondary text-on-secondary shadow-[0_20px_40px_rgba(134,252,136,0.2)] active:scale-[0.98]'
                       }`}
                     >
-                      {pendingId === seg.id ? '處理中...' : isRegistered ? '已報名 ✓ 點擊取消' : '立即報名 (CONFIRM REGISTRATION)'}
+                      {pendingId === seg.id ? '處理中...' : isRegistered ? '已報名 ✓' : '立即報名 (CONFIRM REGISTRATION)'}
                     </button>
                   </div>
                 )}
