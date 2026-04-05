@@ -228,7 +228,7 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
                 <>
                   <button
                     onClick={() => setShowMenu(v => !v)}
-                    className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20"
+                    className="w-11 h-11 rounded-full overflow-hidden border-2 border-primary/20"
                   >
                     <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
                   </button>
@@ -668,7 +668,7 @@ function EventCard({ title, participants, time, image, isTimer, onClick }: { tit
       </div>
       <button
         onClick={e => { e.stopPropagation(); onClick?.(); }}
-        className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-primary hover:bg-primary hover:text-on-primary transition-all"
+        className="w-11 h-11 rounded-full bg-surface-variant flex items-center justify-center text-primary hover:bg-primary hover:text-on-primary transition-all shrink-0"
       >
         <Plus className="w-5 h-5" />
       </button>
