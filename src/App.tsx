@@ -38,6 +38,7 @@ import {
   Image as ImageIcon,
   Save,
   X,
+  CalendarDays,
 } from 'lucide-react';
 
 import { Screen, Challenge, User } from './types';
@@ -514,6 +515,23 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
                       {seg.average_grade ? `${seg.average_grade.toFixed(1)}%` : '—'}
                     </span>
                   </div>
+
+                  {/* 日期 */}
+                  {(seg.start_date || seg.end_date) && (() => {
+                    const fmt = (d: string) => {
+                      const dt = new Date(d);
+                      return isNaN(dt.getTime()) ? d : `${dt.getMonth() + 1}/${dt.getDate()}`;
+                    };
+                    const s = seg.start_date ? fmt(seg.start_date) : null;
+                    const e = seg.end_date ? fmt(seg.end_date) : null;
+                    const label = s && e && s !== e ? `${s} – ${e}` : (s || e);
+                    return (
+                      <div className="flex items-center gap-1 text-[10px] text-on-surface-variant/70">
+                        <CalendarDays size={9} className="shrink-0" />
+                        <span>{label}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 右側按鈕 */}
