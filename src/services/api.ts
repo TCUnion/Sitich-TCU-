@@ -209,6 +209,37 @@ export async function getMySegmentBestEfforts(athleteId: number): Promise<Map<nu
   return map;
 }
 
+/** 批次計算多個路段的名次（segment_id → { rank, total }） */
+export async function getSegmentRankMap(
+  segmentIds: number[],
+  myTimesMap: Map<number, number>,
+): Promise<Map<number, { rank: number; total: number }>> {
+  if (segmentIds.length === 0) return new Map();
+  const { data } = await supabase
+    .from('segment_elapsed_times')
+    .select('segment_id, elapsed_time')
+    .in('segment_id', segmentIds)
+    .gt('elapsed_time', 0);
+  const bySegment = new Map<number, number[]>();
+  (data ?? []).forEach(r => {
+    const segId = Number(r.segment_id);
+    const list = bySegment.get(segId) ?? [];
+    list.push(Number(r.elapsed_time));
+    bySegment.set(segId, list);
+  });
+  const rankMap = new Map<number, { rank: number; total: number }>();
+  for (const segId of segmentIds) {
+    const myTime = myTimesMap.get(segId);
+    if (myTime == null) continue;
+    const times = bySegment.get(segId) ?? [];
+    rankMap.set(segId, {
+      rank: times.filter(t => t < myTime).length + 1,
+      total: times.length,
+    });
+  }
+  return rankMap;
+}
+
 /** 登入後補齊 placeholder 姓名與頭貼（僅更新 'Athlete {id}' 類型的佔位符） */
 export async function refreshAthleteProfile(
   athleteId: number,

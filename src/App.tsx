@@ -46,7 +46,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getMySegmentBestEfforts, MyBestEffort, getSegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, refreshAthleteProfile, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getMySegmentBestEfforts, MyBestEffort, getSegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, refreshAthleteProfile, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata, getSegmentRankMap } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -1200,6 +1200,7 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
   const [mySegmentIds, setMySegmentIds] = useState<number[]>([]);
   const [myTimesMap, setMyTimesMap] = useState<Map<number, number>>(new Map());
   const [myBestEfforts, setMyBestEfforts] = useState<Map<number, MyBestEffort>>(new Map());
+  const [rankMap, setRankMap] = useState<Map<number, { rank: number; total: number }>>(new Map());
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [tcuMember, setTcuMember] = useState<TCUMemberProfile | null>(null);
   const [bindingStep, setBindingStep] = useState<'input' | 'otp' | 'success'>('input');
@@ -1222,7 +1223,9 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
       setMyTimesMap(times);
       setTcuMember(tcu);
       setMyBestEfforts(efforts);
-    }).finally(() => setLoadingRecords(false));
+      return getSegmentRankMap(ids, times);
+    }).then(ranks => setRankMap(ranks))
+    .finally(() => setLoadingRecords(false));
   }, [athlete?.id]);
 
   const refreshTcuMember = async () => {
@@ -1448,6 +1451,7 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
               const elapsedTime = myTimesMap.get(seg.id) ?? bestEffort?.elapsedTime ?? null;
               const activityId = bestEffort?.activityId ?? null;
               const challengeCount = bestEffort?.count ?? 0;
+              const rankInfo = rankMap.get(seg.id) ?? null;
               const now = new Date();
               const endDate = seg.end_date ? new Date(seg.end_date) : null;
               const isActive = !endDate || endDate >= now;
@@ -1467,19 +1471,26 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
                     {elapsedTime !== null ? (
                       <>
                         <p className="font-headline italic-bold text-primary text-lg">{formatElapsedTime(elapsedTime)}</p>
-                        {activityId ? (
-                          <a
-                            href={`https://www.strava.com/activities/${activityId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-end gap-0.5 text-[10px] text-primary/60 hover:text-primary transition-colors"
-                          >
-                            <ExternalLink className="w-2.5 h-2.5" />
-                            Strava
-                          </a>
-                        ) : (
-                          <p className="text-[10px] text-on-surface-variant">完賽</p>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                          {rankInfo && (
+                            <span className="text-[10px] font-medium text-amber-400">
+                              #{rankInfo.rank}/{rankInfo.total}
+                            </span>
+                          )}
+                          {activityId ? (
+                            <a
+                              href={`https://www.strava.com/activities/${activityId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-0.5 text-[10px] text-primary/60 hover:text-primary transition-colors"
+                            >
+                              <ExternalLink className="w-2.5 h-2.5" />
+                              Strava
+                            </a>
+                          ) : (
+                            <span className="text-[10px] text-on-surface-variant">完賽</span>
+                          )}
+                        </div>
                       </>
                     ) : (
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${isActive ? 'bg-tertiary/20 text-tertiary' : 'bg-outline-variant/20 text-on-surface-variant'}`}>
