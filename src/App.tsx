@@ -125,6 +125,7 @@ export default function App() {
   const auth = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('explore');
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+  const [rankingInitSegId, setRankingInitSegId] = useState<number | null>(null);
 
   useEffect(() => {
     if (auth.isLoggedIn && currentScreen === 'login') {
@@ -172,7 +173,7 @@ export default function App() {
           )}
           {currentScreen === 'ranking' && (
             <motion.div key="ranking">
-              <RankingScreen />
+              <RankingScreen initialSegId={rankingInitSegId} />
             </motion.div>
           )}
           {currentScreen === 'register' && (
@@ -182,7 +183,10 @@ export default function App() {
           )}
           {currentScreen === 'profile' && (
             <motion.div key="profile">
-              <ProfileScreen onNavigate={navigateTo} />
+              <ProfileScreen
+                onNavigate={navigateTo}
+                onGoToRanking={(segId) => { setRankingInitSegId(segId); navigateTo('ranking'); }}
+              />
             </motion.div>
           )}
           {currentScreen === 'admin' && (
@@ -708,23 +712,25 @@ interface RankingEntry {
   activityId: number | null;
 }
 
-function RankingScreen() {
+function RankingScreen({ initialSegId }: { initialSegId?: number | null }) {
   const { accessToken, athlete, isLoggedIn } = useAuth();
   const { segments } = useSegmentData();
   const [selectedSeg, setSelectedSeg] = useState<typeof segments[0] | null>(null);
   const [rankingEntries, setRankingEntries] = useState<RankingEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 自動選取第一個進行中路段
+  // 自動選取路段：initialSegId 優先，否則選第一個進行中路段
   useEffect(() => {
-    if (segments.length > 0 && !selectedSeg) {
-      const active = segments.find(s => {
-        const d = getDaysRemaining(s.end_date);
-        return d === null || d > 0;
-      }) ?? segments[0];
-      setSelectedSeg(active);
-    }
-  }, [segments, selectedSeg]);
+    if (segments.length === 0 || selectedSeg) return;
+    const target = initialSegId
+      ? (segments.find(s => s.id === initialSegId) ?? null)
+      : null;
+    const fallback = segments.find(s => {
+      const d = getDaysRemaining(s.end_date);
+      return d === null || d > 0;
+    }) ?? segments[0];
+    setSelectedSeg(target ?? fallback);
+  }, [segments, selectedSeg, initialSegId]);
 
   // 取得報名清單 + segment_efforts_v2 成績（合併，fallback segment_elapsed_times）
   useEffect(() => {
@@ -1193,7 +1199,7 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
 
 const ADMIN_ATHLETE_IDS = (import.meta.env.VITE_ADMIN_ATHLETE_IDS ?? '').split(',').map((s: string) => Number(s.trim())).filter(Boolean);
 
-function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
+function ProfileScreen({ onNavigate, onGoToRanking }: { onNavigate: (screen: Screen) => void; onGoToRanking: (segId: number) => void }) {
   const { athlete } = useAuth();
   const isAdmin = athlete ? ADMIN_ATHLETE_IDS.includes(athlete.id) : false;
   const { segments } = useSegmentData();
@@ -1456,7 +1462,7 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
               const endDate = seg.end_date ? new Date(seg.end_date) : null;
               const isActive = !endDate || endDate >= now;
               return (
-                <div key={seg.id} className="bg-surface-container-high rounded-2xl p-4 border border-white/5 flex items-center gap-4">
+                <div key={seg.id} className="bg-surface-container-high rounded-2xl p-4 border border-white/5 flex items-center gap-4 cursor-pointer hover:bg-surface-container-highest transition-colors" onClick={() => onGoToRanking(seg.id)}>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm leading-snug truncate">
                       {seg.description ?? seg.name}
