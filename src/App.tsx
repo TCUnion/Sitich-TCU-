@@ -393,6 +393,21 @@ function segmentToChallenge(s: StravaSegment): Challenge {
 function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
   const { segments, isLoading } = useSegmentData();
 
+  // 深度連結：?s=<stravaId> → 直接開啟對應賽事詳情
+  useEffect(() => {
+    if (isLoading || segments.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const segId = params.get('s');
+    if (!segId || !/^\d+$/.test(segId)) return;
+    const matched = segments.find(s => String(s.strava_id) === segId);
+    if (matched) {
+      // 清除 URL param 避免重複觸發
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState(null, '', cleanUrl);
+      onNavigate('race-detail', segmentToChallenge(matched));
+    }
+  }, [isLoading, segments, onNavigate]);
+
   const sorted = [...segments].sort((a, b) => {
     const dA = getDaysRemaining(a.end_date) ?? 999;
     const dB = getDaysRemaining(b.end_date) ?? 999;
@@ -1543,12 +1558,18 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
   }, [challenge]);
 
   async function handleShare() {
-    const url = window.location.href;
-    const shareData = { title: challenge.title, text: `挑戰 ${challenge.title}｜${challenge.distance}`, url };
+    const shareUrl = challenge.stravaId
+      ? `${window.location.origin}/?s=${challenge.stravaId}`
+      : window.location.href;
+    const title = `${challenge.title} | TCU CHALLENGE`;
+    const text = challenge.race_description
+      ? challenge.race_description
+      : `挑戰 ${challenge.title}，距離 ${challenge.distance}！快來一起報名！`;
+    const shareData = { title, text, url: shareUrl };
     if (navigator.share) {
       try { await navigator.share(shareData); } catch { /* user cancelled */ }
     } else {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareUrl);
       setShareToast('連結已複製！');
       setTimeout(() => setShareToast(null), 2500);
     }
