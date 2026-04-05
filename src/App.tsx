@@ -911,6 +911,7 @@ function RankingScreen() {
                 time={entry.elapsedTime !== null ? formatElapsedTime(entry.elapsedTime) : '未完成'}
                 watts={entry.avgWatts ?? undefined}
                 attemptCount={entry.attemptCount}
+                activityId={entry.activityId ?? undefined}
                 isUser={entry.athleteId === athlete?.id}
               />
             ))}
@@ -921,17 +922,18 @@ function RankingScreen() {
   );
 }
 
-function ChallengerRow({ rank, name, profile, time, watts, attemptCount, isUser }: {
+function ChallengerRow({ rank, name, profile, time, watts, attemptCount, activityId, isUser }: {
   rank: string;
   name: string;
   profile?: string;
   time: string;
   watts?: number;
   attemptCount?: number;
+  activityId?: number;
   isUser?: boolean;
 }) {
   return (
-    <div className={`flex items-center p-4 rounded-2xl transition-all cursor-pointer ${isUser ? 'bg-surface-container-highest border-l-4 border-secondary shadow-lg' : 'bg-surface-container-low hover:bg-surface-container'}`}>
+    <div className={`flex items-center p-4 rounded-2xl transition-all ${isUser ? 'bg-surface-container-highest border-l-4 border-secondary shadow-lg' : 'bg-surface-container-low hover:bg-surface-container'}`}>
       <span className={`font-headline italic-bold text-2xl w-12 shrink-0 ${isUser ? 'text-secondary' : 'text-on-surface-variant/40'}`}>{rank}</span>
       <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border border-surface-container-highest shrink-0">
         {profile ? (
@@ -946,13 +948,25 @@ function ChallengerRow({ rank, name, profile, time, watts, attemptCount, isUser 
           {watts != null && (
             <span className="text-[10px] text-on-surface-variant/70">{watts}W</span>
           )}
-          {attemptCount != null && attemptCount > 1 && (
-            <span className="text-[10px] text-on-surface-variant/50">×{attemptCount}</span>
+          {attemptCount != null && attemptCount > 0 && (
+            <span className="text-[10px] text-on-surface-variant/50">×{attemptCount} 次</span>
           )}
         </div>
       </div>
-      <div className="text-right shrink-0 ml-2">
+      <div className="text-right shrink-0 ml-2 flex flex-col items-end gap-1">
         <span className={`text-sm font-headline italic-bold ${isUser ? 'text-secondary' : 'text-white'}`}>{time}</span>
+        {activityId != null && (
+          <a
+            href={`https://www.strava.com/activities/${activityId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="flex items-center gap-0.5 text-[10px] text-primary/70 hover:text-primary transition-colors"
+          >
+            <ExternalLink className="w-2.5 h-2.5" />
+            Strava
+          </a>
+        )}
       </div>
     </div>
   );
