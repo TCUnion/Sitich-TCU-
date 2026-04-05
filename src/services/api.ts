@@ -116,7 +116,7 @@ export async function registerChallenge(
       team: team ?? '',
       tcu_id: tcuId ?? null,
       status: 'approved',
-    });
+    }, { onConflict: 'strava_athlete_id,segment_id' });
   if (error) throw error;
 }
 
