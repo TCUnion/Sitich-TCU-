@@ -35,7 +35,7 @@ function injectOG(html, { title, description, image, ogUrl }) {
 async function fetchSegmentOG(supabaseUrl, headers, segId) {
   // 1. 先查 segments_new（用 strava_id），取得 DB id
   const segRes = await fetch(
-    `${supabaseUrl}/rest/v1/segments_new?strava_id=eq.${segId}&select=id,name,distance,og_image&limit=1`,
+    `${supabaseUrl}/rest/v1/segments_new?strava_id=eq.${segId}&select=id,name,description,distance,og_image&limit=1`,
     { headers }
   );
   const segArr = await segRes.json();
@@ -53,7 +53,7 @@ async function fetchSegmentOG(supabaseUrl, headers, segId) {
   const team = teamArr[0] ?? {};
   const meta = metaArr[0] ?? {};
 
-  const title      = team.name ?? seg.name ?? 'TCU CHALLENGE';
+  const title      = team.name ?? seg.description ?? seg.name ?? 'TCU CHALLENGE';
   const distanceKm = seg.distance ? `${(seg.distance / 1000).toFixed(1)} km` : '';
   const description = meta.race_description
     ? `${meta.race_description}${distanceKm ? ` | ${distanceKm}` : ''}`
@@ -67,7 +67,7 @@ async function fetchFeaturedOG(supabaseUrl, headers) {
   const today = new Date().toISOString().slice(0, 10);
   // 先抓 segments_new（is_active，end_date 正序），取得 id 和 strava_id
   const segRes = await fetch(
-    `${supabaseUrl}/rest/v1/segments_new?is_active=eq.true&select=id,strava_id,name,distance,og_image,end_date&order=end_date.asc&limit=20`,
+    `${supabaseUrl}/rest/v1/segments_new?is_active=eq.true&select=id,strava_id,name,description,distance,og_image,end_date&order=end_date.asc&limit=20`,
     { headers }
   );
   const segs = await segRes.json();
@@ -84,7 +84,7 @@ async function fetchFeaturedOG(supabaseUrl, headers) {
   const teamArr = await teamRes.json();
   const team = teamArr?.[0] ?? {};
 
-  const title       = team.name ?? featured.name ?? 'TCU CHALLENGE';
+  const title       = team.name ?? featured.description ?? featured.name ?? 'TCU CHALLENGE';
   const distanceKm  = featured.distance ? `${(featured.distance / 1000).toFixed(1)} km` : '';
   const description = `挑戰 ${title}${distanceKm ? `，距離 ${distanceKm}` : ''}。立即報名 TCU 自行車挑戰！`;
   const image       = team.og_image ?? featured.og_image ?? DEFAULT_IMAGE;
