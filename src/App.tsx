@@ -1627,7 +1627,6 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
       {/* Race Description */}
       {challenge.race_description && (
         <section className="px-6 mt-6 mb-2">
-          <h3 className="font-headline italic-bold text-xl tracking-tight mb-4 uppercase">比賽敘述</h3>
           <div className="prose prose-invert prose-sm max-w-none text-on-surface-variant leading-relaxed space-y-3
             [&_h1]:text-on-surface [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2
             [&_h2]:text-on-surface [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
