@@ -1824,8 +1824,8 @@ function AdminScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
                 className="w-full bg-surface-container rounded-xl px-4 py-3 text-sm border border-white/10 focus:outline-none focus:border-primary/50 placeholder-on-surface-variant/40"
               />
               {ogImage && (
-                <div className="mt-2 rounded-xl overflow-hidden border border-white/10 h-32">
-                  <img src={ogImage} alt="og preview" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <div className="mt-2 rounded-xl overflow-hidden border border-white/10 aspect-[1200/630]">
+                  <img src={ogImage} alt="og preview" className="w-full h-full object-contain" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
               )}
             </div>
