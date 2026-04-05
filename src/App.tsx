@@ -393,6 +393,7 @@ function segmentToChallenge(s: StravaSegment): Challenge {
 function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
   const { segments, isLoading } = useSegmentData();
   const [shareToast, setShareToast] = useState<string | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   async function handleCardShare(e: React.MouseEvent, seg: StravaSegment) {
     e.stopPropagation();
@@ -400,8 +401,10 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
     try {
       await navigator.clipboard.writeText(shareUrl);
       setShareToast('連結已複製！可貼到任何地方分享 🎉');
+      setCopiedUrl(shareUrl);
     } catch {
       setShareToast('複製失敗，請手動複製連結');
+      setCopiedUrl(null);
     }
   }
 
@@ -447,8 +450,13 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
           <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-8 mx-6 max-w-sm w-full flex flex-col items-center gap-4">
             <div className="text-3xl">🎉</div>
             <p className="text-on-surface text-sm font-medium text-center">{shareToast}</p>
+            {copiedUrl && (
+              <div className="w-full bg-black/30 rounded-xl px-4 py-2.5 border border-white/10">
+                <p className="text-on-surface/60 text-xs break-all text-center">{copiedUrl}</p>
+              </div>
+            )}
             <button
-              onClick={() => setShareToast(null)}
+              onClick={() => { setShareToast(null); setCopiedUrl(null); }}
               className="mt-2 px-6 py-2 rounded-full bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               關閉
@@ -1575,6 +1583,7 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
   const { accessToken, athlete, isLoggedIn } = useAuth();
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [shareToast, setShareToast] = useState<string | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   // 動態更新 OG meta tags
   useEffect(() => {
@@ -1602,8 +1611,10 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
     try {
       await navigator.clipboard.writeText(shareUrl);
       setShareToast('連結已複製！可貼到任何地方分享 🎉');
+      setCopiedUrl(shareUrl);
     } catch {
       setShareToast('複製失敗，請手動複製連結');
+      setCopiedUrl(null);
     }
   }
 
@@ -1647,8 +1658,13 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
           <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-8 mx-6 max-w-sm w-full flex flex-col items-center gap-4">
             <div className="text-3xl">🎉</div>
             <p className="text-on-surface text-sm font-medium text-center">{shareToast}</p>
+            {copiedUrl && (
+              <div className="w-full bg-black/30 rounded-xl px-4 py-2.5 border border-white/10">
+                <p className="text-on-surface/60 text-xs break-all text-center">{copiedUrl}</p>
+              </div>
+            )}
             <button
-              onClick={() => setShareToast(null)}
+              onClick={() => { setShareToast(null); setCopiedUrl(null); }}
               className="mt-2 px-6 py-2 rounded-full bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               關閉
