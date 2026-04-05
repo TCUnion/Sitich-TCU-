@@ -173,11 +173,11 @@ export interface MyBestEffort {
   activityName: string | null;
 }
 
-/** 取得指定運動員在所有路段的最佳成績（含活動名稱，來自 segment_efforts_v2） */
+/** 取得指定運動員在所有路段的最佳成績（含 activity_id，來自 segment_efforts_v2） */
 export async function getMySegmentBestEfforts(athleteId: number): Promise<Map<number, MyBestEffort>> {
   const { data } = await supabase
     .from('segment_efforts_v2')
-    .select('segment_id, elapsed_time, activity_id, name')
+    .select('segment_id, elapsed_time, activity_id')
     .eq('athlete_id', athleteId)
     .gt('elapsed_time', 0);
   const map = new Map<number, MyBestEffort>();
@@ -188,7 +188,7 @@ export async function getMySegmentBestEfforts(athleteId: number): Promise<Map<nu
       map.set(segId, {
         elapsedTime: Number(r.elapsed_time),
         activityId: r.activity_id ? Number(r.activity_id) : null,
-        activityName: (r.name as string | null) ?? null,
+        activityName: null,
       });
     }
   });

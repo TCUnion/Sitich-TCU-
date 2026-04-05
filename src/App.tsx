@@ -1445,7 +1445,7 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
           <div className="space-y-3">
             {mySegments.map(seg => {
               const elapsedTime = myTimesMap.get(seg.id) ?? null;
-              const bestEffort = myBestEfforts.get(seg.id) ?? null;
+              const bestEffort = myBestEfforts.get(seg.strava_id) ?? null;
               const activityName = bestEffort?.activityName ?? null;
               const activityId = bestEffort?.activityId ?? null;
               const now = new Date();
@@ -1455,7 +1455,7 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
                 <div key={seg.id} className="bg-surface-container-high rounded-2xl p-4 border border-white/5 flex items-center gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm leading-snug truncate">
-                      {activityName ?? seg.name}
+                      {seg.description ?? seg.name}
                     </p>
                     <p className="text-[10px] text-on-surface-variant mt-0.5 truncate">
                       {seg.name}
