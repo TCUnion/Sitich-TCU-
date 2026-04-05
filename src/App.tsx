@@ -46,7 +46,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentElapsedTimes, registerChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -58,8 +58,10 @@ interface LeaderboardEntry {
 }
 
 function formatElapsedTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
@@ -682,6 +684,9 @@ interface RankingEntry {
   profile: string | null;
   team: string;
   elapsedTime: number | null; // null = 未完成
+  avgWatts: number | null;
+  attemptCount: number;
+  activityId: number | null;
 }
 
 function RankingScreen() {
@@ -702,51 +707,42 @@ function RankingScreen() {
     }
   }, [segments, selectedSeg]);
 
-  // 取得報名清單 + 選填成績（合併）
+  // 取得報名清單 + segment_efforts_v2 成績（合併）
   useEffect(() => {
     if (!selectedSeg) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       try {
-        // 主資料：所有報名者
-        const regs: RegistrationRecord[] = await getSegmentRegistrations(selectedSeg.id);
-
-        // 次要資料（優先序高→低）：segment_elapsed_times > Strava 排行榜
-        const dbTimeMap = await getSegmentElapsedTimes(selectedSeg.id);
-
-        let stravaTimeMap = new Map<number, number>();
-        if (accessToken && selectedSeg.strava_id) {
-          try {
-            const lb = await getLeaderboard(String(selectedSeg.strava_id), accessToken);
-            const lbList: LeaderboardEntry[] = Array.isArray(lb) ? lb : (lb.entries ?? []);
-            lbList.forEach(e => {
-              if (e.athlete_id != null && e.elapsed_time != null) {
-                stravaTimeMap.set(e.athlete_id, e.elapsed_time);
-              }
-            });
-          } catch {
-            // 排行榜無法取得，僅顯示報名清單
-          }
-        }
+        const [regs, { bestEfforts, attemptCounts }] = await Promise.all([
+          getSegmentRegistrations(selectedSeg.id),
+          getSegmentEfforts(
+            selectedSeg.strava_id,
+            selectedSeg.start_date ?? undefined,
+            selectedSeg.end_date ?? undefined,
+          ),
+        ]);
 
         if (!cancelled) {
-          // 保留報名順序作為基礎序號
-          const withTime: RankingEntry[] = regs.map(r => ({
-            athleteId: r.strava_athlete_id,
-            name: r.athlete_name,
-            profile: r.athlete_profile,
-            team: r.team,
-            elapsedTime: dbTimeMap.get(r.strava_athlete_id) ?? stravaTimeMap.get(r.strava_athlete_id) ?? null,
-          }));
+          const withTime: RankingEntry[] = regs.map((r: RegistrationRecord) => {
+            const effort: SegmentEffortEntry | undefined = bestEfforts.get(r.strava_athlete_id);
+            return {
+              athleteId: r.strava_athlete_id,
+              name: r.athlete_name,
+              profile: r.athlete_profile,
+              team: r.team,
+              elapsedTime: effort ? effort.elapsed_time : null,
+              avgWatts: effort?.average_watts ?? null,
+              attemptCount: attemptCounts.get(r.strava_athlete_id) ?? 0,
+              activityId: effort?.activity_id ?? null,
+            };
+          });
           const hasResults = withTime.some(e => e.elapsedTime !== null);
           if (hasResults) {
-            // 有成績：完成者依時間正序排前，未完成者依報名順序排後
             const done = withTime.filter(e => e.elapsedTime !== null).sort((a, b) => a.elapsedTime! - b.elapsedTime!);
             const pending = withTime.filter(e => e.elapsedTime === null);
             setRankingEntries([...done, ...pending]);
           } else {
-            // 無人完成：依報名順序顯示
             setRankingEntries(withTime);
           }
         }
@@ -755,7 +751,7 @@ function RankingScreen() {
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedSeg, accessToken]);
+  }, [selectedSeg]);
 
   const completedCount = rankingEntries.filter(e => e.elapsedTime !== null).length;
   const myEntry = rankingEntries.find(e => e.athleteId === athlete?.id);
@@ -852,6 +848,26 @@ function RankingScreen() {
               </div>
             </div>
           </div>
+          {(myEntry.avgWatts || myEntry.attemptCount > 0) && (
+            <div className="grid grid-cols-2 gap-4 w-full mt-3">
+              {myEntry.avgWatts != null && (
+                <div className="bg-surface-container-low p-4 rounded-2xl border-l-4 border-primary/60 shadow">
+                  <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">均功率</span>
+                  <div className="mt-1">
+                    <span className="text-xl font-headline italic-bold text-white">{myEntry.avgWatts} <span className="text-xs font-normal text-on-surface-variant">W</span></span>
+                  </div>
+                </div>
+              )}
+              {myEntry.attemptCount > 0 && (
+                <div className="bg-surface-container-low p-4 rounded-2xl border-l-4 border-primary/60 shadow">
+                  <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">挑戰次數</span>
+                  <div className="mt-1">
+                    <span className="text-xl font-headline italic-bold text-white">{myEntry.attemptCount}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
@@ -889,6 +905,8 @@ function RankingScreen() {
                 name={entry.name}
                 profile={entry.profile ?? undefined}
                 time={entry.elapsedTime !== null ? formatElapsedTime(entry.elapsedTime) : '未完成'}
+                watts={entry.avgWatts ?? undefined}
+                attemptCount={entry.attemptCount}
                 isUser={entry.athleteId === athlete?.id}
               />
             ))}
@@ -899,24 +917,37 @@ function RankingScreen() {
   );
 }
 
-function ChallengerRow({ rank, name, profile, time, isUser }: { rank: string, name: string, profile?: string, time: string, isUser?: boolean }) {
+function ChallengerRow({ rank, name, profile, time, watts, attemptCount, isUser }: {
+  rank: string;
+  name: string;
+  profile?: string;
+  time: string;
+  watts?: number;
+  attemptCount?: number;
+  isUser?: boolean;
+}) {
   return (
     <div className={`flex items-center p-4 rounded-2xl transition-all cursor-pointer ${isUser ? 'bg-surface-container-highest border-l-4 border-secondary shadow-lg' : 'bg-surface-container-low hover:bg-surface-container'}`}>
-      <span className={`font-headline italic-bold text-2xl w-12 ${isUser ? 'text-secondary' : 'text-on-surface-variant/40'}`}>{rank}</span>
-      <div className="w-10 h-10 rounded-full overflow-hidden mr-4 border border-surface-container-highest">
+      <span className={`font-headline italic-bold text-2xl w-12 shrink-0 ${isUser ? 'text-secondary' : 'text-on-surface-variant/40'}`}>{rank}</span>
+      <div className="w-10 h-10 rounded-full overflow-hidden mr-3 border border-surface-container-highest shrink-0">
         {profile ? (
           <img src={profile} alt={name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant text-xs font-bold">{name.charAt(0)}</div>
         )}
       </div>
-      <div className="flex-grow">
-        <h4 className="text-sm font-bold text-white uppercase">{name}</h4>
-        {isUser && (
-          <span className="text-[8px] bg-secondary/20 text-secondary px-1.5 py-0.5 rounded font-bold uppercase">Personal Best</span>
-        )}
+      <div className="flex-grow min-w-0">
+        <h4 className="text-sm font-bold text-white uppercase truncate">{name}</h4>
+        <div className="flex items-center gap-2 mt-0.5">
+          {watts != null && (
+            <span className="text-[10px] text-on-surface-variant/70">{watts}W</span>
+          )}
+          {attemptCount != null && attemptCount > 1 && (
+            <span className="text-[10px] text-on-surface-variant/50">×{attemptCount}</span>
+          )}
+        </div>
       </div>
-      <div className="text-right">
+      <div className="text-right shrink-0 ml-2">
         <span className={`text-sm font-headline italic-bold ${isUser ? 'text-secondary' : 'text-white'}`}>{time}</span>
       </div>
     </div>

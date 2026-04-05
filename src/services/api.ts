@@ -334,6 +334,41 @@ export async function upsertSegmentMetadata(
   if (error) throw error;
 }
 
+export interface SegmentEffortEntry {
+  athlete_id: number;
+  elapsed_time: number;
+  average_watts: number | null;
+  activity_id: number | null;
+  start_date_local: string | null;
+}
+
+/** 取得路段成績（segment_efforts_v2），回傳每位運動員最佳時間與嘗試次數 */
+export async function getSegmentEfforts(
+  stravaId: number,
+  startDate?: string | null,
+  endDate?: string | null,
+): Promise<{ bestEfforts: Map<number, SegmentEffortEntry>; attemptCounts: Map<number, number> }> {
+  let query = supabase
+    .from('segment_efforts_v2')
+    .select('athlete_id, elapsed_time, average_watts, activity_id, start_date_local')
+    .eq('segment_id', stravaId)
+    .gt('elapsed_time', 0);
+  if (startDate) query = query.gte('start_date_local', startDate);
+  if (endDate) query = query.lte('start_date_local', endDate + 'T23:59:59');
+  const { data } = await query;
+  const bestEfforts = new Map<number, SegmentEffortEntry>();
+  const attemptCounts = new Map<number, number>();
+  (data ?? []).forEach(r => {
+    const id = Number(r.athlete_id);
+    attemptCounts.set(id, (attemptCounts.get(id) ?? 0) + 1);
+    const existing = bestEfforts.get(id);
+    if (!existing || r.elapsed_time < existing.elapsed_time) {
+      bestEfforts.set(id, r as SegmentEffortEntry);
+    }
+  });
+  return { bestEfforts, attemptCounts };
+}
+
 /** 取得官方賽事（published，日期倒序） */
 export async function getOfficialEvents(limit = 5): Promise<OfficialEvent[]> {
   const { data, error } = await supabase
