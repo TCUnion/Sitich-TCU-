@@ -3,7 +3,7 @@
  * 針對 ?s=<stravaId> 請求，從 Supabase 取回挑戰資料並注入正確的 OG meta tags，
  * 讓 Facebook / Line / Twitter 等社群爬蟲能讀到每場賽事的標題、描述與封面圖。
  */
-const DEFAULT_IMAGE = 'https://www.criterium.tw/og-image.png';
+const DEFAULT_IMAGE = 'https://db.criterium.tw/storage/v1/object/public/og-images/12/1775351843621.jpg';
 const SITE_URL      = 'https://strava.criterium.tw';
 
 /** HTML 屬性安全轉義 */
