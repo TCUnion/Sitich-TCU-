@@ -1608,10 +1608,46 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
     const shareUrl = challenge.stravaId
       ? `${window.location.origin}/?s=${challenge.stravaId}`
       : window.location.href;
+
+    // strip markdown for plain text
+    const stripMd = (md: string) => md
+      .replace(/#{1,6}\s+/g, '')
+      .replace(/\*\*(.+?)\*\*/gs, '$1')
+      .replace(/\*(.+?)\*/gs, '$1')
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+      .replace(/^[-*]\s+/gm, '• ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    const fmtDate = (d: string) => {
+      const dt = new Date(d);
+      return isNaN(dt.getTime()) ? d : `${dt.getMonth() + 1}/${dt.getDate()}`;
+    };
+    const dateRange = challenge.startDate && challenge.time
+      ? `${fmtDate(challenge.startDate)} – ${fmtDate(challenge.time)}`
+      : challenge.time ? `截止 ${fmtDate(challenge.time)}` : '';
+
+    const lines: string[] = [];
+    lines.push(`🏆 ${challenge.title}`);
+    lines.push('');
+    if (dateRange) lines.push(`📅 報名日期：${dateRange}`);
+    if (challenge.distance) lines.push(`🚴 距離：${challenge.distance}`);
+    if (challenge.elevation) lines.push(`⛰️ 爬升：${challenge.elevation}`);
+    if (challenge.race_description) {
+      lines.push('');
+      lines.push(stripMd(challenge.race_description));
+    }
+    lines.push('');
+    lines.push(`🔗 ${shareUrl}`);
+    lines.push('');
+    lines.push('#TCUChallenge #自行車挑戰 #台灣自行車 #Cycling #Taiwan');
+
+    const shareText = lines.join('\n');
+
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareToast('連結已複製！可貼到任何地方分享 🎉');
-      setCopiedUrl(shareUrl);
+      await navigator.clipboard.writeText(shareText);
+      setShareToast('已複製！可貼到任何地方分享 🎉');
+      setCopiedUrl(shareText);
     } catch {
       setShareToast('複製失敗，請手動複製連結');
       setCopiedUrl(null);
@@ -1654,18 +1690,18 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
     >
       {/* Share Modal */}
       {shareToast && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-8 mx-6 max-w-sm w-full flex flex-col items-center gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
+          <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-6 w-full max-w-sm flex flex-col items-center gap-4">
             <div className="text-3xl">🎉</div>
             <p className="text-on-surface text-sm font-medium text-center">{shareToast}</p>
             {copiedUrl && (
-              <div className="w-full bg-black/30 rounded-xl px-4 py-2.5 border border-white/10">
-                <p className="text-on-surface/60 text-xs break-all text-center">{copiedUrl}</p>
+              <div className="w-full bg-black/30 rounded-xl px-4 py-3 border border-white/10 max-h-52 overflow-y-auto">
+                <pre className="text-on-surface/60 text-xs whitespace-pre-wrap break-words font-sans leading-relaxed">{copiedUrl}</pre>
               </div>
             )}
             <button
               onClick={() => { setShareToast(null); setCopiedUrl(null); }}
-              className="mt-2 px-6 py-2 rounded-full bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity"
+              className="mt-1 px-6 py-2 rounded-full bg-primary text-on-primary text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               關閉
             </button>
