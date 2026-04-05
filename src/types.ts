@@ -18,6 +18,7 @@ export interface Challenge {
   stravaId?: number;
   polyline?: string;
   startDate?: string;
+  race_description?: string;
 }
 
 export interface User {

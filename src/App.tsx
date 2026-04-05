@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useAuth } from './hooks/useAuth';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -384,6 +385,7 @@ function segmentToChallenge(s: StravaSegment): Challenge {
     stravaId: s.strava_id,
     polyline: s.polyline,
     startDate: s.start_date,
+    race_description: s.race_description,
   };
 }
 
@@ -1701,15 +1703,26 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
         </section>
       )}
 
-      {/* Rules */}
-      <section className="px-6 mt-10 mb-12">
-        <h3 className="font-headline italic-bold text-xl tracking-tight mb-6 uppercase">賽事規則 / RULES</h3>
-        <div className="space-y-4">
-          <RuleItem icon={<CloudIcon className="text-secondary" />} title="Must use Strava for tracking" desc="必須使用 Strava 紀錄行程，且數據需公開。" />
-          <RuleItem icon={<Hammer className="text-primary" />} title="Helmet is mandatory" desc="為了您的安全，全程必須佩戴安全帽。" />
-          <RuleItem icon={<TimerIcon className="text-tertiary" />} title="Finish within 3 hours" desc="請在 3 小時內完成比賽以符合積分資格。" />
-        </div>
-      </section>
+      {/* Race Description */}
+      {challenge.race_description && (
+        <section className="px-6 mt-10 mb-12">
+          <h3 className="font-headline italic-bold text-xl tracking-tight mb-4 uppercase">比賽敘述</h3>
+          <div className="prose prose-invert prose-sm max-w-none text-on-surface-variant leading-relaxed space-y-3
+            [&_h1]:text-on-surface [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2
+            [&_h2]:text-on-surface [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
+            [&_h3]:text-on-surface [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1
+            [&_p]:mb-3 [&_p]:leading-relaxed
+            [&_strong]:text-on-surface [&_strong]:font-semibold
+            [&_em]:text-on-surface-variant
+            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1
+            [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1
+            [&_li]:leading-relaxed
+            [&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_blockquote]:text-primary [&_blockquote]:italic [&_blockquote]:my-3
+            [&_hr]:border-white/10 [&_hr]:my-4">
+            <ReactMarkdown>{challenge.race_description}</ReactMarkdown>
+          </div>
+        </section>
+      )}
 
       {/* Sticky Footer */}
       {(daysRemaining === null || daysRemaining > 0) && (
