@@ -354,7 +354,7 @@ export async function getSegmentEfforts(
     .eq('segment_id', stravaId)
     .gt('elapsed_time', 0);
   if (startDate) query = query.gte('start_date', startDate);
-  if (endDate) query = query.lte('start_date', endDate);
+  if (endDate) query = query.lte('start_date', endDate + 'T23:59:59');
   const { data } = await query;
   const bestEfforts = new Map<number, SegmentEffortEntry>();
   const attemptCounts = new Map<number, number>();
