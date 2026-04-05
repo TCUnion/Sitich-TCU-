@@ -167,6 +167,19 @@ export async function getMySegmentElapsedTimes(athleteId: number): Promise<Map<n
   return map;
 }
 
+/** 登入後補齊 placeholder 姓名與頭貼（僅更新 'Athlete {id}' 類型的佔位符） */
+export async function refreshAthleteProfile(
+  athleteId: number,
+  athleteName: string,
+  athleteProfile: string | null,
+): Promise<void> {
+  await supabase
+    .from('registrations')
+    .update({ athlete_name: athleteName, athlete_profile: athleteProfile })
+    .eq('strava_athlete_id', athleteId)
+    .like('athlete_name', 'Athlete %');
+}
+
 /** 取消報名 */
 export async function unregisterChallenge(athleteId: number, segmentId: number): Promise<void> {
   const { error } = await supabase

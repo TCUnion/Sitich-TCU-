@@ -46,7 +46,7 @@ import {
 import { Screen, Challenge, User } from './types';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
-import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
+import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getSegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, refreshAthleteProfile, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata } from './services/api';
 
 interface LeaderboardEntry {
   rank?: number;
@@ -131,6 +131,14 @@ export default function App() {
       setCurrentScreen('explore');
     }
   }, [auth.isLoggedIn]);
+
+  // 登入後補齊 placeholder 姓名與頭貼（背景靜默執行）
+  useEffect(() => {
+    if (!auth.athlete) return;
+    const { id, firstname, lastname, profile } = auth.athlete;
+    const fullName = `${firstname} ${lastname}`.trim();
+    refreshAthleteProfile(id, fullName, profile ?? null).catch(console.error);
+  }, [auth.athlete?.id]);
 
   const navigateTo = (screen: Screen, challenge?: Challenge) => {
     if (challenge) setSelectedChallenge(challenge);
