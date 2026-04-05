@@ -397,11 +397,46 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
 
   async function handleCardShare(e: React.MouseEvent, seg: StravaSegment) {
     e.stopPropagation();
+    const ch = segmentToChallenge(seg);
     const shareUrl = `${window.location.origin}/?s=${seg.strava_id}`;
+
+    const stripMd = (md: string) => md
+      .replace(/#{1,6}\s+/g, '')
+      .replace(/\*\*(.+?)\*\*/gs, '$1')
+      .replace(/\*(.+?)\*/gs, '$1')
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+      .replace(/^[-*]\s+/gm, '• ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    const fmtDate = (d: string) => {
+      const dt = new Date(d);
+      return isNaN(dt.getTime()) ? d : `${dt.getMonth() + 1}/${dt.getDate()}`;
+    };
+    const dateRange = ch.startDate && ch.time
+      ? `${fmtDate(ch.startDate)} – ${fmtDate(ch.time)}`
+      : ch.time ? `截止 ${fmtDate(ch.time)}` : '';
+
+    const lines: string[] = [];
+    lines.push(`🏆 ${ch.title}`);
+    lines.push('');
+    if (dateRange) lines.push(`📅 活動期間：${dateRange}`);
+    if (ch.distance) lines.push(`🚴 距離：${ch.distance}`);
+    if (ch.elevation) lines.push(`⛰️ 爬升：${ch.elevation}`);
+    if (ch.race_description) {
+      lines.push('');
+      lines.push(stripMd(ch.race_description));
+    }
+    lines.push('');
+    lines.push(`🔗 ${shareUrl}`);
+    lines.push('');
+    lines.push('#TCUChallenge #自行車挑戰 #台灣自行車 #Cycling #Taiwan');
+
+    const shareText = lines.join('\n');
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareToast('連結已複製！可貼到任何地方分享 🎉');
-      setCopiedUrl(shareUrl);
+      await navigator.clipboard.writeText(shareText);
+      setShareToast('已複製！可貼到任何地方分享 🎉');
+      setCopiedUrl(shareText);
     } catch {
       setShareToast('複製失敗，請手動複製連結');
       setCopiedUrl(null);
@@ -446,13 +481,13 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
     >
       {/* Share Modal */}
       {shareToast && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-8 mx-6 max-w-sm w-full flex flex-col items-center gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
+          <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-6 w-full max-w-sm flex flex-col items-center gap-4">
             <div className="text-3xl">🎉</div>
             <p className="text-on-surface text-sm font-medium text-center">{shareToast}</p>
             {copiedUrl && (
-              <div className="w-full bg-black/30 rounded-xl px-4 py-2.5 border border-white/10">
-                <p className="text-on-surface/60 text-xs break-all text-center">{copiedUrl}</p>
+              <div className="w-full bg-black/30 rounded-xl px-4 py-3 border border-white/10 max-h-52 overflow-y-auto">
+                <pre className="text-on-surface/60 text-xs whitespace-pre-wrap break-words font-sans leading-relaxed">{copiedUrl}</pre>
               </div>
             )}
             <button
