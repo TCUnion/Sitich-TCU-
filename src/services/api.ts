@@ -105,9 +105,17 @@ export async function registerChallenge(
   team?: string,
   tcuId?: string | null,
 ): Promise<void> {
+  const { data: existing } = await supabase
+    .from('registrations')
+    .select('id')
+    .eq('strava_athlete_id', athleteId)
+    .eq('segment_id', segmentId)
+    .maybeSingle();
+  if (existing) return;
+
   const { error } = await supabase
     .from('registrations')
-    .upsert({
+    .insert({
       id: crypto.randomUUID(),
       strava_athlete_id: athleteId,
       athlete_name: athleteName,
@@ -116,7 +124,7 @@ export async function registerChallenge(
       team: team ?? '',
       tcu_id: tcuId ?? null,
       status: 'approved',
-    }, { onConflict: 'strava_athlete_id,segment_id' });
+    });
   if (error) throw error;
 }
 
