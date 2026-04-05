@@ -412,7 +412,7 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
       className="px-4 space-y-8"
     >
       {/* Hero Section */}
-      <section className="relative rounded-2xl overflow-hidden min-h-[320px] flex items-end p-6 bg-surface-container-low shadow-xl">
+      <section className="relative rounded-2xl overflow-hidden aspect-[1200/630] flex items-end p-6 bg-surface-container-low shadow-xl">
         <div className="absolute inset-0 z-0">
           <img
             src={heroImg}
@@ -1592,7 +1592,7 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
       )}
 
       {/* Hero Section */}
-      <section className="relative h-[400px] w-full overflow-hidden">
+      <section className="relative aspect-[1200/630] w-full overflow-hidden">
         <img
           src={challenge.image || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'}
           alt={challenge.title}
