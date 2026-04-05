@@ -76,7 +76,7 @@ export function useSegmentData(): UseSegmentDataReturn {
               id: s.id,
               strava_id: s.strava_id || s.id,
               name: s.name,
-              displayName: raceInfo?.name || s.name,
+              displayName: raceInfo?.name || s.description || s.name,
               distance: s.distance || 0,
               average_grade: s.average_grade || 0,
               maximum_grade: s.maximum_grade || 0,
