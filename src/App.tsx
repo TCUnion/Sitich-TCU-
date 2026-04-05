@@ -85,7 +85,7 @@ const CHALLENGES: Challenge[] = [
     title: 'BEIHAI SUMMER CRITERIUM',
     distance: '45 KM',
     elevation: '120 M',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAfjqEHprsLubLBwLOtMXjuLlB8HMahsaznYvH36nuKfUvoB7g7oqkQ-dVjRxLqftIGKAd5Iy8A1-FTxbDAp5yI2ntYfPffWbmCBNmJX5BV6RAw8smlKbEobvJPbatCEhfmJgYzBEzu5lXm8fqNkXfoKBbuQiJfG6ThwdhYCSwzwXYLL3rheSaGIh51zIMe6k190X0rNGayVRsnelaAI7qctK5yBov_UllfnDfJ6SsZm2TwmjEe1R3XJifczDtEw7Eo9aQSI2J9dl0G',
+    image: 'https://images.unsplash.com/photo-1534787238916-9ba6764efd4f?w=800&q=80',
     status: 'hot',
     reward: '+450 PTS'
   },
@@ -94,7 +94,7 @@ const CHALLENGES: Challenge[] = [
     title: 'THE RED RIDGE',
     distance: '87 KM',
     elevation: '3,275 M',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyiYYkckDcnssqWFjSfkmjoPnNnMTLP8mxoPtcXpjHsurva96XIvG-5vWlv-HpccC6T6RjLwU0NO4Cqd7APtQJTaTE8Qt4QYS-pn_xfOOkaC7a3CG3jgPsaREiCuWxJicr40F-HSDQn_NlmRHjSG7L6Mtrw9O5lmwm-w8s0uOERuTsyPtJ8C8d59aX0lTyKYGfTmWICKt2QxAyDJoe3ScpDt0h1mmKF68sNj43QFv72zfMjELKEpytmFKpEAw9rtCTXZtMO02u7qyC',
+    image: 'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=800&q=80',
     status: 'new'
   },
   {
@@ -102,7 +102,7 @@ const CHALLENGES: Challenge[] = [
     title: 'EARLY MORNING MARATHON TRAINING',
     distance: '—',
     elevation: '—',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC4DvLqI7W47428A5NCztnVQVtng_6SptDuDpLzZmhaMjK0mvf3ufV1uTGajZPWQ3oN5UDsz-FKyzHhuHzU10BJt-eDY2ZJvepocMTZ0G1DfM3LjhIPpbQF6-gYTz0Ta_g_6-xGGg7jTMNHCnqLqOhF42LtTQOGzZ3Q5_ncIsD2TQo6QQn3N5h3wqz90H4Q4E-0PoNz8_I8ZC-BCfPCdvgNLE8fViOIyC9nf5H4f8KIwaqdZqzbLw1ibJUaGw7M2P8AIs67h0Lj21c-',
+    image: 'https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?w=800&q=80',
     status: 'live',
     participants: '2.4k 參加中',
     time: '06:30 - 08:30'
@@ -112,7 +112,7 @@ const CHALLENGES: Challenge[] = [
     title: 'ENDURANCE POWER CHALLENGE',
     distance: '—',
     elevation: '—',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDetM_-jDG75bwMLojuJB7tVb-dYAbTW-xnMucBqZKbBAjzEc71yqHA064KJWKCxYJf9gVr0R_SC1vpYVD85-2MjTVcc-l3byM6YXqkdjhhTk3Uf0DU9nmPH8JNiDnPkiokcqfe6LGRhJ_LgDQpzsDI4o3s_Uq78TN8GZLu8hQ0DUNSJQ0_Lv5hmOpWj0MbnRrSeNRe5eqCa3dCqR0TOOQeKEyU7fIvleYSl6NIcFKpEAw9rtCTXZtMO02u7qyC',
+    image: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800&q=80',
     status: 'live',
     participants: '842 參加中',
     time: '進行中 01:24:12'
@@ -975,7 +975,7 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
     return d !== null && d <= 0;
   });
 
-  const FALLBACK_IMG = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80';
+  const FALLBACK_IMG = 'https://images.unsplash.com/photo-1534787238916-9ba6764efd4f?w=800&q=80';
 
   const fmt = (d: string) => {
     const dt = new Date(d);
@@ -1773,7 +1773,7 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
       {/* Hero */}
       <section className="mx-4 mt-4 rounded-2xl overflow-hidden aspect-[1200/630] relative">
         <img
-          src={challenge.image || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80'}
+          src={challenge.image || 'https://images.unsplash.com/photo-1534787238916-9ba6764efd4f?w=800&q=80'}
           alt={challenge.title}
           className="w-full h-full object-cover grayscale-[0.3] brightness-[0.7]"
         />
