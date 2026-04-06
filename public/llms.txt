@@ -34,3 +34,20 @@
 
 - Facebook：https://www.facebook.com/criterium.tw
 - LINE 官方帳號：https://page.line.me/criterium
+
+## 常見問題
+
+**Q: TCU CHALLENGE 是什麼？**
+A: TCU CHALLENGE 是由 TCU（Taiwan Cyclist United）營運的台灣自行車計時挑戰平台。連結 Strava 帳號即可報名路段挑戰，與全台車友競技並查看即時排行榜。
+
+**Q: 如何報名參加挑戰？**
+A: 使用 Strava 帳號登入後，在首頁瀏覽進行中的挑戰賽事，點擊「報名」即可參加。完成 Strava 路段騎乘後，成績會自動同步至排行榜。
+
+**Q: 需要付費嗎？**
+A: TCU CHALLENGE 平台完全免費使用。您只需要一個 Strava 帳號即可報名所有公開挑戰賽事。
+
+**Q: 什麼是 TCU 會員綁定？**
+A: TCU 會員綁定可將您的 Strava 帳號與 TCU 車隊會籍連結。綁定後可顯示所屬車隊、查看進階個人數據與技能雷達圖。透過個人資料頁面輸入 OTP 驗證碼即可完成綁定。
+
+**Q: 成績如何計算？**
+A: 成績來自 Strava 路段計時資料。系統自動抓取您在指定路段的騎乘時間，依完成時間排序產生排行榜。挑戰期間內的最佳成績會被記錄。
