@@ -901,13 +901,6 @@ function RankingScreen({ initialSegId }: { initialSegId?: number | null }) {
         );
       })()}
 
-      {/* 未登入提示 */}
-      {!isLoggedIn && (
-        <div className="text-center text-on-surface/50 py-16 text-sm space-y-2">
-          <Trophy className="w-10 h-10 mx-auto opacity-30" />
-          <p>請先登入 Strava 以查看排行榜</p>
-        </div>
-      )}
 
       {/* 個人排名 Hero */}
       {isLoggedIn && myEntry && (
@@ -970,7 +963,7 @@ function RankingScreen({ initialSegId }: { initialSegId?: number | null }) {
       )}
 
       {/* 排行榜列表 */}
-      {isLoggedIn && (
+      {(
         <section className="mb-12">
           <div className="flex justify-between items-end mb-6 px-2">
             <h2 className="font-headline italic-bold text-xl uppercase tracking-wider text-secondary">CHALLENGERS</h2>
@@ -1068,10 +1061,11 @@ function ChallengerRow({ rank, name, profile, time, watts, attemptCount, activit
 
 function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?: Challenge) => void }) {
   const { segments, isLoading } = useSegmentData();
-  const { athlete, isLoggedIn } = useAuth();
+  const { athlete, isLoggedIn, login } = useAuth();
   const [registeredIds, setRegisteredIds] = useState<Set<number>>(new Set());
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     if (!athlete?.id) return;
@@ -1085,7 +1079,7 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
 
   async function handleRegister(segmentId: number, segmentName: string) {
     if (!isLoggedIn || !athlete) {
-      showToast('請先登入 Strava 再報名');
+      setShowLoginModal(true);
       return;
     }
     if (registeredIds.has(segmentId)) return;
@@ -1137,6 +1131,34 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
       {toast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-surface-container-highest text-white text-sm px-5 py-3 rounded-2xl shadow-2xl border border-white/10 max-w-[90vw] text-center animate-fade-in">
           {toast}
+        </div>
+      )}
+
+      {/* 未登入報名 Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
+          <div className="bg-surface-container-high rounded-2xl shadow-2xl border border-white/10 px-6 py-8 w-full max-w-sm flex flex-col items-center gap-5">
+            <div className="w-12 h-12 rounded-full bg-[#FC4C02]/20 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-[#FC4C02]"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
+            </div>
+            <div className="text-center">
+              <p className="text-white font-semibold text-base">需要登入才能報名</p>
+              <p className="text-on-surface-variant text-sm mt-1">請先連結 Strava 帳號</p>
+            </div>
+            <button
+              onClick={() => { setShowLoginModal(false); login(); }}
+              className="w-full flex items-center justify-center gap-2 bg-[#FC4C02] hover:bg-[#e04402] active:bg-[#c93d02] text-white font-semibold py-3.5 rounded-2xl transition-colors"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" /></svg>
+              使用 Strava 登入
+            </button>
+            <button
+              onClick={() => setShowLoginModal(false)}
+              className="text-on-surface-variant text-sm hover:text-white transition-colors"
+            >
+              取消
+            </button>
+          </div>
         </div>
       )}
 
