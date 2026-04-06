@@ -39,7 +39,7 @@ export function openStravaAuth(): void {
 }
 
 export async function getLeaderboard(segmentId: string, token: string) {
-  const res = await fetch(`${API_BASE}/api/leaderboard/${segmentId}`, {
+  const res = await fetch(`https://tcuapi.zeabur.app/api/leaderboard/${segmentId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch leaderboard');
