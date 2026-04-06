@@ -1,0 +1,36 @@
+# TCU CHALLENGE
+
+> TCU CHALLENGE 是台灣自行車挑戰社群平台，由 TCU（Taiwan Cyclist United）台灣單車聯盟營運。連結 Strava 帳號即可報名參加計時挑戰賽，即時查看排行榜並與全台車友競技。
+
+## 服務簡介
+
+- **平台名稱**：TCU CHALLENGE
+- **網址**：https://strava.criterium.tw
+- **主辦單位**：TCU — Taiwan Cyclist United（台灣單車聯盟）
+- **官網**：https://www.criterium.tw
+- **語言**：繁體中文
+- **服務對象**：台灣自行車運動愛好者、競技車手
+
+## 主要功能
+
+- 挑戰賽瀏覽與報名：瀏覽近期 Strava 路段計時挑戰，以 Strava 帳號一鍵報名
+- 即時排行榜：查看各路段挑戰成績排名
+- 個人成績追蹤：記錄歷次挑戰成績、最佳時間與名次
+- 車友社群：與全台車隊、車友互動競技
+
+## 賽事類型
+
+- 公路登山計時挑戰（爬坡路段）
+- 公路平路繞圈計時
+- 隊伍團體挑戰賽
+
+## 技術整合
+
+- Strava OAuth 認證
+- 即時 Strava 路段資料串接
+- AI 助理（Google Gemini）
+
+## 聯絡資訊
+
+- Facebook：https://www.facebook.com/criterium.tw
+- LINE 官方帳號：https://page.line.me/criterium
