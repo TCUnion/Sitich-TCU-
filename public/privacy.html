@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>隱私權政策 — TCU CHALLENGE</title>
+  <link rel="canonical" href="https://strava.criterium.tw/privacy.html">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: #0f172a;
+      color: #cbd5e1;
+      line-height: 1.75;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+    header { margin-bottom: 2.5rem; }
+    header a {
+      color: #f97316;
+      text-decoration: none;
+      font-size: 0.875rem;
+    }
+    header a:hover { text-decoration: underline; }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-top: 0.75rem;
+      margin-bottom: 0.25rem;
+    }
+    .meta { font-size: 0.825rem; color: #64748b; }
+    section { margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f97316;
+      margin-bottom: 0.6rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 1px solid #1e293b;
+    }
+    p { margin-bottom: 0.75rem; }
+    ul { padding-left: 1.4rem; margin-bottom: 0.75rem; }
+    li { margin-bottom: 0.3rem; }
+    a { color: #f97316; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #1e293b;
+    }
+    th { background: #1e293b; color: #94a3b8; font-weight: 500; }
+    footer { margin-top: 3rem; font-size: 0.8rem; color: #475569; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="https://strava.criterium.tw/">← 返回 TCU CHALLENGE</a>
+      <h1>隱私權政策</h1>
+      <p class="meta">最後更新：2026 年 4 月 6 日　｜　憲動工作室有限公司</p>
+    </header>
+
+    <section>
+      <h2>一、關於本政策</h2>
+      <p>本隱私權政策說明 <strong>TCU CHALLENGE</strong>（網址：<a href="https://strava.criterium.tw">strava.criterium.tw</a>）如何收集、使用及保護您的個人資料。使用本平台即表示您同意本政策。</p>
+      <p>本平台由 <strong>憲動工作室有限公司</strong>（統一編號：90011062，地址：408007 臺中市南屯區五權西路二段 666 號 6 樓之 4）營運。</p>
+    </section>
+
+    <section>
+      <h2>二、收集的資料</h2>
+      <table>
+        <thead>
+          <tr><th>資料類型</th><th>來源</th><th>用途</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Strava 運動員 ID</td><td>Strava OAuth 授權</td><td>識別身份、報名紀錄</td></tr>
+          <tr><td>姓名、大頭照</td><td>Strava OAuth 授權</td><td>顯示於排行榜、報名列表</td></tr>
+          <tr><td>Strava 存取令牌</td><td>Strava OAuth 授權</td><td>查詢路段計時成績</td></tr>
+          <tr><td>TCU 會員 ID</td><td>使用者手動輸入</td><td>會員身份驗證與綁定</td></tr>
+          <tr><td>報名紀錄</td><td>使用者操作</td><td>賽事管理、排行榜計算</td></tr>
+          <tr><td>匿名使用行為</td><td>Google Analytics 4</td><td>改善平台體驗</td></tr>
+        </tbody>
+      </table>
+      <p>本平台<strong>不</strong>收集密碼、信用卡或其他金融資訊。</p>
+    </section>
+
+    <section>
+      <h2>三、Strava 授權</h2>
+      <p>登入時本平台會透過 Strava OAuth 2.0 取得您的公開個人資料與路段成績讀取權限。您可隨時至 <a href="https://www.strava.com/settings/apps" target="_blank" rel="noopener">Strava 應用程式設定</a> 撤銷授權，撤銷後本平台將無法存取您的 Strava 資料。</p>
+    </section>
+
+    <section>
+      <h2>四、資料儲存</h2>
+      <p>報名資料、會員綁定資訊與路段成績儲存於 <strong>Supabase</strong>（PostgreSQL 資料庫，伺服器位於美國）。Supabase 符合 SOC 2 Type II 標準。</p>
+      <p>登入狀態（存取令牌）以 <code>localStorage</code> 存放於您的瀏覽器本機，不會上傳至第三方。</p>
+    </section>
+
+    <section>
+      <h2>五、分析與追蹤</h2>
+      <p>本平台使用 <strong>Google Tag Manager</strong>（GTM-MFHG7X7K）與 <strong>Google Analytics 4</strong>（GA4）收集匿名使用統計，包含頁面瀏覽次數、功能使用情況等。所有資料在傳送前均已去識別化，不會用於識別個人身份。</p>
+      <p>如需退出 GA4 追蹤，可安裝 <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">Google Analytics 停用瀏覽器外掛程式</a>。</p>
+    </section>
+
+    <section>
+      <h2>六、Cookie 與本機儲存</h2>
+      <ul>
+        <li><strong>tcu_auth</strong>（localStorage）：儲存 Strava 登入狀態，關閉瀏覽器後保留，方便下次免登入。</li>
+        <li><strong>_ga、_gid</strong>（Cookie）：Google Analytics 匿名識別碼，用於統計分析。</li>
+      </ul>
+      <p>您可透過瀏覽器設定清除 Cookie 與 localStorage。</p>
+    </section>
+
+    <section>
+      <h2>七、資料分享</h2>
+      <p>本平台不出售、不出租您的個人資料。僅在以下情形與第三方共享：</p>
+      <ul>
+        <li>Strava API — 查詢路段計時成績（您已授權）</li>
+        <li>Supabase — 資料庫儲存服務</li>
+        <li>Google — 匿名分析統計</li>
+        <li>法律要求或保護合法權益時</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>八、您的權利</h2>
+      <p>依據個人資料保護法，您有權要求查詢、更正或刪除本平台持有的個人資料。如需行使上述權利，請透過以下方式聯絡我們：</p>
+      <ul>
+        <li>Facebook：<a href="https://www.facebook.com/criterium.tw" target="_blank" rel="noopener">facebook.com/criterium.tw</a></li>
+        <li>LINE 官方帳號：<a href="https://page.line.me/criterium" target="_blank" rel="noopener">page.line.me/criterium</a></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>九、政策變更</h2>
+      <p>本政策如有重大變更，將於本頁更新日期並於平台公告。建議定期查閱本頁。</p>
+    </section>
+
+    <footer>
+      &copy; 2026 憲動工作室有限公司 ／ TCU — Taiwan Cyclist United<br>
+      <a href="https://strava.criterium.tw/">TCU CHALLENGE</a>
+    </footer>
+  </div>
+</body>
+</html>
