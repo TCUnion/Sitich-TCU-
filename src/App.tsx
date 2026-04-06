@@ -55,6 +55,8 @@ interface LeaderboardEntry {
   athlete_profile?: string;
   elapsed_time?: number;
   start_date_local?: string;
+  average_watts?: number | null;
+  activity_id?: number | null;
 }
 
 function formatElapsedTime(seconds: number): string {
@@ -752,47 +754,84 @@ function RankingScreen({ initialSegId }: { initialSegId?: number | null }) {
     setSelectedSeg(target ?? fallback);
   }, [segments, selectedSeg, initialSegId]);
 
-  // 取得報名清單 + segment_efforts_v2 成績（合併，fallback segment_elapsed_times）
+  // 取得排行榜：REST API（service.criterium.tw）優先，失敗後 fallback Supabase
   useEffect(() => {
     if (!selectedSeg) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       try {
-        const [regs, { bestEfforts, attemptCounts }, elapsedTimesMap] = await Promise.all([
-          getSegmentRegistrations(selectedSeg.id),
-          getSegmentEfforts(
-            selectedSeg.strava_id,
-            selectedSeg.start_date ?? undefined,
-            selectedSeg.end_date ?? undefined,
-          ),
-          getSegmentElapsedTimes(selectedSeg.id),
-        ]);
+        // 先嘗試 REST API（需 Bearer token）
+        let apiEntries: LeaderboardEntry[] | null = null;
+        if (accessToken) {
+          try {
+            const lb = await getLeaderboard(String(selectedSeg.strava_id), accessToken);
+            if (Array.isArray(lb?.entries) && lb.entries.length > 0) {
+              apiEntries = lb.entries as LeaderboardEntry[];
+            }
+          } catch (e) {
+            console.warn('[Ranking] REST leaderboard failed, falling back to Supabase:', e);
+          }
+        }
 
-        if (!cancelled) {
-          const withTime: RankingEntry[] = regs.map((r: RegistrationRecord) => {
-            const effort: SegmentEffortEntry | undefined = bestEfforts.get(r.strava_athlete_id);
-            // fallback: segment_elapsed_times（無瓦數/次數資訊但覆蓋更廣）
-            const fallbackTime = elapsedTimesMap.get(r.strava_athlete_id) ?? null;
-            const elapsedTime = effort ? effort.elapsed_time : fallbackTime;
-            return {
-              athleteId: r.strava_athlete_id,
-              name: r.athlete_name,
-              profile: r.athlete_profile,
-              team: r.team,
-              elapsedTime,
-              avgWatts: effort?.average_watts ?? null,
-              attemptCount: attemptCounts.get(r.strava_athlete_id) ?? 0,
-              activityId: effort?.activity_id ?? null,
-            };
-          });
-          const hasResults = withTime.some(e => e.elapsedTime !== null);
-          if (hasResults) {
-            const done = withTime.filter(e => e.elapsedTime !== null).sort((a, b) => a.elapsedTime! - b.elapsedTime!);
-            const pending = withTime.filter(e => e.elapsedTime === null);
-            setRankingEntries([...done, ...pending]);
-          } else {
-            setRankingEntries(withTime);
+        if (apiEntries && !cancelled) {
+          // REST API 有資料：merge registrations 取得車隊資訊
+          const regs = await getSegmentRegistrations(selectedSeg.id);
+          const regMap = new Map(regs.map(r => [r.strava_athlete_id, r]));
+          const entries: RankingEntry[] = apiEntries
+            .filter(e => e.athlete_id != null && e.elapsed_time != null)
+            .sort((a, b) => (a.elapsed_time ?? 0) - (b.elapsed_time ?? 0))
+            .map(e => {
+              const reg = regMap.get(e.athlete_id!);
+              return {
+                athleteId: e.athlete_id!,
+                name: reg?.athlete_name ?? e.athlete_name ?? `Athlete ${e.athlete_id}`,
+                profile: reg?.athlete_profile ?? e.athlete_profile ?? null,
+                team: reg?.team ?? '',
+                elapsedTime: e.elapsed_time!,
+                avgWatts: e.average_watts ?? null,
+                attemptCount: 0,
+                activityId: e.activity_id ?? null,
+              };
+            });
+          if (!cancelled) setRankingEntries(entries);
+        } else {
+          // Fallback：Supabase registrations + segment_efforts_v2 + segment_elapsed_times
+          const [regs, { bestEfforts, attemptCounts }, elapsedTimesMap] = await Promise.all([
+            getSegmentRegistrations(selectedSeg.id),
+            getSegmentEfforts(
+              selectedSeg.strava_id,
+              selectedSeg.start_date ?? undefined,
+              selectedSeg.end_date ?? undefined,
+            ),
+            getSegmentElapsedTimes(selectedSeg.id),
+          ]);
+
+          if (!cancelled) {
+            const withTime: RankingEntry[] = regs.map((r: RegistrationRecord) => {
+              const effort: SegmentEffortEntry | undefined = bestEfforts.get(r.strava_athlete_id);
+              // fallback: segment_elapsed_times（無瓦數/次數資訊但覆蓋更廣）
+              const fallbackTime = elapsedTimesMap.get(r.strava_athlete_id) ?? null;
+              const elapsedTime = effort ? effort.elapsed_time : fallbackTime;
+              return {
+                athleteId: r.strava_athlete_id,
+                name: r.athlete_name,
+                profile: r.athlete_profile,
+                team: r.team,
+                elapsedTime,
+                avgWatts: effort?.average_watts ?? null,
+                attemptCount: attemptCounts.get(r.strava_athlete_id) ?? 0,
+                activityId: effort?.activity_id ?? null,
+              };
+            });
+            const hasResults = withTime.some(e => e.elapsedTime !== null);
+            if (hasResults) {
+              const done = withTime.filter(e => e.elapsedTime !== null).sort((a, b) => a.elapsedTime! - b.elapsedTime!);
+              const pending = withTime.filter(e => e.elapsedTime === null);
+              setRankingEntries([...done, ...pending]);
+            } else {
+              setRankingEntries(withTime);
+            }
           }
         }
       } finally {
@@ -800,7 +839,7 @@ function RankingScreen({ initialSegId }: { initialSegId?: number | null }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedSeg]);
+  }, [selectedSeg, accessToken]);
 
   const completedCount = rankingEntries.filter(e => e.elapsedTime !== null).length;
   const myEntry = rankingEntries.find(e => e.athleteId === athlete?.id);
