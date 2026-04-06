@@ -130,6 +130,12 @@ export default function App() {
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [rankingInitSegId, setRankingInitSegId] = useState<number | null>(null);
 
+  // Track initial page view on mount
+  useEffect(() => {
+    trackPageView(currentScreen);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (auth.isLoggedIn && currentScreen === 'login') {
       setCurrentScreen('explore');
