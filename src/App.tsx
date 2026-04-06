@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 
 import { Screen, Challenge, User } from './types';
+import { trackPageView, trackEvent, setUserProperties } from './services/analytics';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
 import { MapThumbnail } from './components/MapThumbnail';
 import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getMySegmentBestEfforts, MyBestEffort, getSegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, refreshAthleteProfile, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata, getSegmentRankMap } from './services/api';
@@ -132,6 +133,7 @@ export default function App() {
   useEffect(() => {
     if (auth.isLoggedIn && currentScreen === 'login') {
       setCurrentScreen('explore');
+      trackPageView('explore');
     }
   }, [auth.isLoggedIn]);
 
@@ -147,6 +149,7 @@ export default function App() {
     if (challenge) setSelectedChallenge(challenge);
     setCurrentScreen(screen);
     window.scrollTo(0, 0);
+    trackPageView(screen);
   };
 
   const avatar = auth.athlete?.profile ?? MOCK_USER.avatar;
@@ -471,6 +474,7 @@ function ExploreScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge?
       await navigator.clipboard.writeText(shareText);
       setShareToast('已複製！可貼到任何地方分享 🎉');
       setCopiedUrl(shareText);
+      trackEvent('share', { content_type: 'challenge', item_id: seg.strava_id });
     } catch {
       setShareToast('複製失敗，請手動複製連結');
       setCopiedUrl(null);
@@ -1086,6 +1090,7 @@ function RegisterScreen({ onNavigate }: { onNavigate: (screen: Screen, challenge
       await registerChallenge(athlete.id, name, segmentId, profile);
       setRegisteredIds(prev => new Set(prev).add(segmentId));
       showToast(`報名成功：${segmentName} 🎉`);
+      trackEvent('challenge_register', { segment_id: segmentId, segment_name: segmentName });
     } catch {
       showToast('操作失敗，請稍後再試');
     } finally {
@@ -1319,6 +1324,8 @@ function ProfileScreen({ onNavigate, onGoToRanking }: { onNavigate: (screen: Scr
           setBindingStep('success');
           await refreshTcuMember();
           window.dispatchEvent(new Event('tcu-binding-success'));
+          trackEvent('tcu_binding_complete');
+          setUserProperties({ is_tcu_member: true });
         } else {
           setBindingError('此 TCU 帳號已綁定其他 Strava 帳號，無法重複綁定。');
         }
@@ -1335,6 +1342,8 @@ function ProfileScreen({ onNavigate, onGoToRanking }: { onNavigate: (screen: Scr
         setBindingStep('success');
         await refreshTcuMember();
         window.dispatchEvent(new Event('tcu-binding-success'));
+        trackEvent('tcu_binding_complete');
+        setUserProperties({ is_tcu_member: true });
       } else {
         setBindingStep('otp');
       }
@@ -1365,6 +1374,8 @@ function ProfileScreen({ onNavigate, onGoToRanking }: { onNavigate: (screen: Scr
       setBindingStep('success');
       await refreshTcuMember();
       window.dispatchEvent(new Event('tcu-binding-success'));
+      trackEvent('tcu_binding_complete');
+      setUserProperties({ is_tcu_member: true });
     } catch (e) {
       setBindingError('綁定失敗，請稍後再試。');
     } finally {

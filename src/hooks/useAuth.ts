@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { openStravaAuth } from '../services/api';
+import { trackEvent, setUserProperties } from '../services/analytics';
 
 export interface AthleteInfo {
   id: number;
@@ -44,6 +45,8 @@ export function useAuth() {
       const { access_token, athlete } = event.data;
       if (!access_token || !athlete) return;
       saveAuth(access_token, athlete, setAuth);
+      trackEvent('login', { method: 'strava' });
+      setUserProperties({ user_id: String(athlete.id) });
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
@@ -61,6 +64,8 @@ export function useAuth() {
       const athlete: AthleteInfo = JSON.parse(athleteRaw);
       saveAuth(access_token, athlete, setAuth);
       window.history.replaceState(null, '', window.location.pathname);
+      trackEvent('login', { method: 'strava_ios_fallback' });
+      setUserProperties({ user_id: String(athlete.id) });
     } catch {}
   }, []);
 
