@@ -1829,7 +1829,7 @@ function ProfileScreen({ onNavigate, onGoToRanking }: { onNavigate: (screen: Scr
         )}
         <div className="mt-6 text-center">
           <a
-            href="/privacy.html"
+            href="/privacy"
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-on-surface-variant/50 hover:text-on-surface-variant transition-colors"
