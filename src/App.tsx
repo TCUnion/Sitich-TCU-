@@ -1827,6 +1827,16 @@ function ProfileScreen({ onNavigate, onGoToRanking }: { onNavigate: (screen: Scr
             </button>
           </div>
         )}
+        <div className="mt-6 text-center">
+          <a
+            href="/privacy.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-on-surface-variant/50 hover:text-on-surface-variant transition-colors"
+          >
+            隱私權政策
+          </a>
+        </div>
       </section>
     </motion.div>
   );
