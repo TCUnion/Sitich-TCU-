@@ -745,7 +745,7 @@ interface RankingEntry {
 }
 
 function RankingScreen({ initialSegId }: { initialSegId?: number | null }) {
-  const { accessToken, athlete, isLoggedIn } = useAuth();
+  const { athlete, isLoggedIn } = useAuth();
   const { segments } = useSegmentData();
   const [selectedSeg, setSelectedSeg] = useState<typeof segments[0] | null>(null);
   const [rankingEntries, setRankingEntries] = useState<RankingEntry[]>([]);
@@ -764,23 +764,23 @@ function RankingScreen({ initialSegId }: { initialSegId?: number | null }) {
     setSelectedSeg(target ?? fallback);
   }, [segments, selectedSeg, initialSegId]);
 
-  // 取得排行榜：REST API（service.criterium.tw）優先，失敗後 fallback Supabase
+  // 取得排行榜：strava-proxy Edge Function 優先，失敗後 fallback Supabase
   useEffect(() => {
     if (!selectedSeg) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       try {
-        // 先嘗試 REST API（需 Bearer token）
+        // 先嘗試 strava-proxy（需登入取得 athlete.id）
         let apiEntries: LeaderboardEntry[] | null = null;
-        if (accessToken) {
+        if (athlete?.id) {
           try {
-            const lb = await getLeaderboard(String(selectedSeg.strava_id), accessToken);
+            const lb = await getLeaderboard(String(selectedSeg.strava_id), athlete.id);
             if (Array.isArray(lb?.entries) && lb.entries.length > 0) {
               apiEntries = lb.entries as LeaderboardEntry[];
             }
           } catch (e) {
-            console.warn('[Ranking] REST leaderboard failed, falling back to Supabase:', e);
+            console.warn('[Ranking] strava-proxy leaderboard failed, falling back to Supabase:', e);
           }
         }
 
@@ -849,7 +849,7 @@ function RankingScreen({ initialSegId }: { initialSegId?: number | null }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedSeg, accessToken]);
+  }, [selectedSeg, athlete?.id]);
 
   const completedCount = rankingEntries.filter(e => e.elapsedTime !== null).length;
   const myEntry = rankingEntries.find(e => e.athleteId === athlete?.id);
@@ -1855,7 +1855,7 @@ function ProfileItem({ label, value, icon }: { label: string, value: string, ico
 }
 
 function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onNavigate: (screen: Screen) => void }) {
-  const { accessToken, athlete, isLoggedIn } = useAuth();
+  const { athlete, isLoggedIn } = useAuth();
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
@@ -1930,15 +1930,14 @@ function RaceDetailScreen({ challenge, onNavigate }: { challenge: Challenge; onN
   }
 
   useEffect(() => {
-    if (!challenge.stravaId) return;
-    const token = accessToken ?? '';
-    getLeaderboard(String(challenge.stravaId), token)
+    if (!challenge.stravaId || !athlete?.id) return;
+    getLeaderboard(String(challenge.stravaId), athlete.id)
       .then((data: unknown) => {
         const list: LeaderboardEntry[] = Array.isArray(data) ? data : ((data as { entries?: LeaderboardEntry[] }).entries ?? []);
         setLeaderboardEntries(list);
       })
       .catch(() => {});
-  }, [challenge.stravaId, accessToken]);
+  }, [challenge.stravaId, athlete?.id]);
 
   const personalBest = isLoggedIn && athlete
     ? leaderboardEntries.find(e => e.athlete_id === athlete.id)

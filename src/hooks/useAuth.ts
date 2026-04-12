@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { openStravaAuth, storeStravaToken, checkStravaTokenStatus } from '../services/api';
+import { openStravaAuth, checkStravaTokenStatus, fetchAthleteProfile } from '../services/api';
 import { trackEvent, setUserProperties } from '../services/analytics';
 
 export interface AthleteInfo {
@@ -15,9 +15,8 @@ export interface AthleteInfo {
 
 interface AuthState {
   athlete: AthleteInfo | null;
-  accessToken: string | null;
   isLoggedIn: boolean;
-  /** 新 Supabase token 狀態 */
+  /** Supabase token 狀態（伺服器端） */
   tokenStatus: 'unknown' | 'active' | 'expired' | 'refresh_failed' | 'revoked' | 'not_found';
 }
 
@@ -28,37 +27,23 @@ function loadAuth(): AuthState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return { ...parsed, tokenStatus: 'unknown' };
+      // 忽略舊版本遺留的 accessToken 欄位
+      const { accessToken: _dropped, ...rest } = parsed;
+      void _dropped;
+      return { ...rest, tokenStatus: 'unknown' };
     }
   } catch {}
-  return { athlete: null, accessToken: null, isLoggedIn: false, tokenStatus: 'unknown' };
+  return { athlete: null, isLoggedIn: false, tokenStatus: 'unknown' };
 }
 
-function saveAuth(
-  access_token: string,
-  athlete: AthleteInfo,
-  setAuth: (s: AuthState) => void,
-  extra?: { refresh_token?: string; expires_at?: number },
-) {
+function saveAuth(athlete: AthleteInfo, setAuth: (s: AuthState) => void) {
   const newState: AuthState = {
     athlete,
-    accessToken: access_token,
     isLoggedIn: true,
     tokenStatus: 'active',
   };
   setAuth(newState);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-
-  // 非阻塞：將 token 同步到新 Supabase（集中管理）
-  storeStravaToken({
-    access_token,
-    refresh_token: extra?.refresh_token,
-    expires_at: extra?.expires_at,
-    athlete,
-    source_project: 'STRAVA TCU',
-  }).catch(() => {
-    // 靜默失敗：新系統儲存失敗不影響登入體驗
-  });
 }
 
 export function useAuth() {
@@ -86,11 +71,13 @@ export function useAuth() {
 
   // postMessage 流程（桌面 / Android popup）
   useEffect(() => {
+    const ALLOWED_ORIGINS = ['https://service.criterium.tw'];
     const handleMessage = (event: MessageEvent) => {
+      if (!ALLOWED_ORIGINS.includes(event.origin)) return;
       if (event.data?.type !== 'STRAVA_AUTH_SUCCESS') return;
-      const { access_token, athlete, refresh_token, expires_at } = event.data;
-      if (!access_token || !athlete) return;
-      saveAuth(access_token, athlete, setAuth, { refresh_token, expires_at });
+      const { athlete } = event.data;
+      if (!athlete?.id) return;
+      saveAuth(athlete, setAuth);
       trackEvent('login', { method: 'strava' });
       setUserProperties({ user_id: String(athlete.id) });
     };
@@ -98,30 +85,33 @@ export function useAuth() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // iOS Safari fallback：從 URL hash 讀取 redirect 帶回的 token
+  // iOS Safari fallback：從 URL hash 讀取 athlete_id，再向 strava-proxy 取 athlete 資料
   useEffect(() => {
     const hash = window.location.hash;
-    if (!hash.includes('auth_token')) return;
+    if (!hash.includes('athlete_id')) return;
     const params = new URLSearchParams(hash.replace(/^#\/auth\?/, ''));
-    const access_token = params.get('auth_token');
-    const athleteRaw = params.get('athlete');
-    if (!access_token || !athleteRaw) return;
-    try {
-      const athlete: AthleteInfo = JSON.parse(athleteRaw);
-      const refresh_token = params.get('refresh_token') ?? undefined;
-      const expires_at = params.get('expires_at') ? Number(params.get('expires_at')) : undefined;
-      saveAuth(access_token, athlete, setAuth, { refresh_token, expires_at });
-      window.history.replaceState(null, '', window.location.pathname);
+    const athleteIdStr = params.get('athlete_id');
+    if (!athleteIdStr) return;
+    const athleteId = Number(athleteIdStr);
+    if (!Number.isFinite(athleteId)) return;
+
+    window.history.replaceState(null, '', window.location.pathname);
+
+    fetchAthleteProfile(athleteId).then(athlete => {
+      if (!athlete) return;
+      saveAuth(athlete, setAuth);
       trackEvent('login', { method: 'strava_ios_fallback' });
       setUserProperties({ user_id: String(athlete.id) });
-    } catch {}
+    }).catch(() => {
+      // profile 取得失敗時靜默忽略，使用者可重新登入
+    });
   }, []);
 
   const login = useCallback(() => openStravaAuth(), []);
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
-    setAuth({ athlete: null, accessToken: null, isLoggedIn: false, tokenStatus: 'unknown' });
+    setAuth({ athlete: null, isLoggedIn: false, tokenStatus: 'unknown' });
   }, []);
 
   return { ...auth, login, logout };

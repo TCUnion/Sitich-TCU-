@@ -213,5 +213,8 @@ VITE_ADMIN_ATHLETE_IDS=2838277
 
 ## 與 TCU 生態系關係
 
+> **開發邊界**：本專案為純前台。所有後台功能（管理員操作、賽事管理、資料修復等）一律在 `/Volumes/OWC 2T/ClaudeCode/中央管理主機` 開發，不在此 repo 實作。
+
+- **中央管理主機**：`/Volumes/OWC 2T/ClaudeCode/中央管理主機`（後台管理系統，AdminPanel + ManagerDashboard）
 - **TCU小幫手**：`/Volumes/OWC 2T/ClaudeCode/TCU小幫手`（主平台，React + FastAPI）
 - **TCULineDB**：`/Volumes/OWC 2T/ClaudeCode/TCULineDB`（會員資料庫）

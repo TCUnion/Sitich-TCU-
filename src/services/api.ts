@@ -139,6 +139,15 @@ export async function stravaApiProxy<T = unknown>(
   });
 }
 
+/** 取得 Strava 運動員基本資料（供 iOS fallback 使用，不需 accessToken） */
+export async function fetchAthleteProfile(athleteId: number): Promise<{
+  id: number; firstname: string; lastname: string;
+  profile: string; profile_medium: string;
+  city?: string; state?: string; country?: string;
+} | null> {
+  return stravaApiProxy(athleteId, '/athlete');
+}
+
 /** 入列同步任務 */
 export async function enqueueStravaSync(data: {
   job_type: string;
@@ -157,25 +166,28 @@ export function openStravaAuth(): void {
   );
 }
 
-export async function getLeaderboard(segmentId: string, token: string) {
-  const res = await fetch(`https://tcuapi.zeabur.app/api/leaderboard/${segmentId}`, {
-    headers: { Authorization: `Bearer ${token}` },
+export async function getLeaderboard(segmentId: string, athleteId: number) {
+  const data = await callEdgeFunction<Record<string, unknown>>('strava-proxy', {
+    athlete_id: athleteId,
+    endpoint: `/segments/${segmentId}/leaderboard`,
   });
-  if (!res.ok) throw new Error('Failed to fetch leaderboard');
-  const data = await res.json();
+  if (!data) throw new Error('Failed to fetch leaderboard');
   // API 可能回傳 { entries: [...] } 或直接陣列；統一為 { entries }
-  const raw: unknown[] = Array.isArray(data) ? data : (data?.entries ?? []);
+  const raw: unknown[] = Array.isArray(data) ? data : ((data.entries as unknown[]) ?? []);
   // 欄位映射：API 回傳 name/time_seconds/avg_power_value → 前端 athlete_name/elapsed_time/average_watts
-  const entries = raw.map((e: Record<string, unknown>) => ({
-    rank: e.rank as number | undefined,
-    athlete_id: (e.athlete_id ?? e.id) as number | undefined,
-    athlete_name: (e.athlete_name ?? e.name) as string | undefined,
-    athlete_profile: e.athlete_profile as string | undefined,
-    elapsed_time: (e.elapsed_time ?? e.time_seconds) as number | undefined,
-    start_date_local: (e.start_date_local ?? e.date) as string | undefined,
-    average_watts: (e.average_watts ?? e.avg_power_value) as number | null | undefined,
-    activity_id: (e.activity_id ?? e.strava_activity_id) as number | null | undefined,
-  }));
+  const entries = raw.map((e: unknown) => {
+    const entry = e as Record<string, unknown>;
+    return {
+      rank: entry.rank as number | undefined,
+      athlete_id: (entry.athlete_id ?? entry.id) as number | undefined,
+      athlete_name: (entry.athlete_name ?? entry.name) as string | undefined,
+      athlete_profile: entry.athlete_profile as string | undefined,
+      elapsed_time: (entry.elapsed_time ?? entry.time_seconds) as number | undefined,
+      start_date_local: (entry.start_date_local ?? entry.date) as string | undefined,
+      average_watts: (entry.average_watts ?? entry.avg_power_value) as number | null | undefined,
+      activity_id: (entry.activity_id ?? entry.strava_activity_id) as number | null | undefined,
+    };
+  });
   return { entries };
 }
 
