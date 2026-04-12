@@ -103,16 +103,19 @@ export async function storeStravaToken(data: {
   source_project?: string;
 }): Promise<boolean> {
   if (!EDGE_FN_BASE) return false;
+  // 防止 n8n 模板渲染失敗導致的 "undefined" 字串
+  const clean = (v: unknown) => (v && v !== 'undefined' && v !== 'null') ? v : null;
+  const accessToken = clean(data.access_token);
+  if (!accessToken || !data.athlete?.id) return false;
   try {
     const res = await fetch(`${EDGE_FN_BASE}/strava-oauth-exchange`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        // 傳送 token 資料供 Edge Function 直接儲存（非 code exchange 模式）
         direct_store: true,
-        access_token: data.access_token,
-        refresh_token: data.refresh_token ?? null,
-        expires_at: data.expires_at ?? Math.floor(Date.now() / 1000) + 21600,
+        access_token: accessToken,
+        refresh_token: clean(data.refresh_token),
+        expires_at: (data.expires_at && data.expires_at > 0) ? data.expires_at : Math.floor(Date.now() / 1000) + 21600,
         athlete: data.athlete,
         source_project: data.source_project ?? 'sitich',
       }),
