@@ -73,9 +73,9 @@ export function useAuth() {
   useEffect(() => {
     // OAuth redirect chain (Strava → n8n) 會讓瀏覽器把 popup 的 origin 設為 null
     // 因此改為允許 null + 已知來源，並透過 data 結構驗證合法性
-    const ALLOWED_ORIGINS: (string | null)[] = [null, 'https://service.criterium.tw'];
+    const ALLOWED_ORIGINS = ['null', 'https://service.criterium.tw'];
     const handleMessage = (event: MessageEvent) => {
-      if (!ALLOWED_ORIGINS.includes(event.origin as string | null)) return;
+      if (!ALLOWED_ORIGINS.includes(event.origin)) return;
       if (event.data?.type !== 'STRAVA_AUTH_SUCCESS') return;
       const { athlete } = event.data;
       if (!athlete?.id) return;
