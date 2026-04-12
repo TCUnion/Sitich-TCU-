@@ -55,7 +55,7 @@ function saveAuth(
     refresh_token: extra?.refresh_token,
     expires_at: extra?.expires_at,
     athlete,
-    source_project: 'sitich',
+    source_project: 'STRAVA TCU',
   }).catch(() => {
     // 靜默失敗：新系統儲存失敗不影響登入體驗
   });

@@ -117,7 +117,7 @@ export async function storeStravaToken(data: {
         refresh_token: clean(data.refresh_token),
         expires_at: (data.expires_at && data.expires_at > 0) ? data.expires_at : Math.floor(Date.now() / 1000) + 21600,
         athlete: data.athlete,
-        source_project: data.source_project ?? 'sitich',
+        source_project: data.source_project ?? 'STRAVA TCU',
       }),
     });
     return res.ok;
