@@ -25,10 +25,126 @@ async function apiPost<T = unknown>(path: string, body: Record<string, unknown>)
   }
 }
 
+// === 舊 Supabase（db.criterium.tw）— 現有資料 ===
 export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY,
 );
+
+// === 新 Supabase（TCU 共用）— Token 管理 + 遷移目標 ===
+const NEW_SUPABASE_URL = import.meta.env.VITE_NEW_SUPABASE_URL as string;
+const NEW_SUPABASE_ANON_KEY = import.meta.env.VITE_NEW_SUPABASE_ANON_KEY as string;
+
+export const supabaseNew = (NEW_SUPABASE_URL && NEW_SUPABASE_ANON_KEY)
+  ? createClient(NEW_SUPABASE_URL, NEW_SUPABASE_ANON_KEY)
+  : null;
+
+const EDGE_FN_BASE = NEW_SUPABASE_URL
+  ? `${NEW_SUPABASE_URL}/functions/v1`
+  : null;
+
+/** 呼叫新 Supabase Edge Function（含 5 秒超時） */
+async function callEdgeFunction<T = unknown>(
+  fnName: string,
+  body: Record<string, unknown>,
+): Promise<T | null> {
+  if (!EDGE_FN_BASE) return null;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`${EDGE_FN_BASE}/${fnName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      console.warn(`[EdgeFn] ${fnName} failed:`, res.status);
+      return null;
+    }
+    return await res.json() as T;
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      console.warn(`[EdgeFn] ${fnName} timeout (5s)`);
+    } else {
+      console.warn(`[EdgeFn] ${fnName} error:`, err);
+    }
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// === Strava Token 集中管理 API ===
+
+export interface TokenStatus {
+  exists: boolean;
+  athlete_id?: number;
+  athlete_name?: string;
+  athlete_profile?: string;
+  token_status?: string;
+  is_expired?: boolean;
+  can_auto_refresh?: boolean;
+  last_used_at?: string;
+  source_project?: string;
+}
+
+/** 查詢 Strava token 狀態（透過 Edge Function，不暴露 token） */
+export async function checkStravaTokenStatus(athleteId: number): Promise<TokenStatus | null> {
+  return callEdgeFunction<TokenStatus>('strava-token-status', { athlete_id: athleteId });
+}
+
+/** 將 OAuth 取得的 token 存入新 Supabase（由 n8n callback 後前端轉發） */
+export async function storeStravaToken(data: {
+  access_token: string;
+  refresh_token?: string;
+  expires_at?: number;
+  athlete: { id: number; firstname?: string; lastname?: string; profile?: string; profile_medium?: string };
+  source_project?: string;
+}): Promise<boolean> {
+  if (!EDGE_FN_BASE) return false;
+  try {
+    const res = await fetch(`${EDGE_FN_BASE}/strava-oauth-exchange`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        // 傳送 token 資料供 Edge Function 直接儲存（非 code exchange 模式）
+        direct_store: true,
+        access_token: data.access_token,
+        refresh_token: data.refresh_token ?? null,
+        expires_at: data.expires_at ?? Math.floor(Date.now() / 1000) + 21600,
+        athlete: data.athlete,
+        source_project: data.source_project ?? 'sitich',
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** 透過 strava-proxy 呼叫 Strava API（自動 refresh token） */
+export async function stravaApiProxy<T = unknown>(
+  athleteId: number,
+  endpoint: string,
+  params?: Record<string, unknown>,
+): Promise<T | null> {
+  return callEdgeFunction<T>('strava-proxy', {
+    athlete_id: athleteId,
+    endpoint,
+    params,
+  });
+}
+
+/** 入列同步任務 */
+export async function enqueueStravaSync(data: {
+  job_type: string;
+  athlete_id?: number;
+  segment_id?: number;
+  reason?: string;
+}): Promise<{ status: string; job_id?: string } | null> {
+  return callEdgeFunction('strava-enqueue-sync', data);
+}
 
 export function openStravaAuth(): void {
   window.open(
@@ -43,7 +159,21 @@ export async function getLeaderboard(segmentId: string, token: string) {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch leaderboard');
-  return res.json();
+  const data = await res.json();
+  // API 可能回傳 { entries: [...] } 或直接陣列；統一為 { entries }
+  const raw: unknown[] = Array.isArray(data) ? data : (data?.entries ?? []);
+  // 欄位映射：API 回傳 name/time_seconds/avg_power_value → 前端 athlete_name/elapsed_time/average_watts
+  const entries = raw.map((e: Record<string, unknown>) => ({
+    rank: e.rank as number | undefined,
+    athlete_id: (e.athlete_id ?? e.id) as number | undefined,
+    athlete_name: (e.athlete_name ?? e.name) as string | undefined,
+    athlete_profile: e.athlete_profile as string | undefined,
+    elapsed_time: (e.elapsed_time ?? e.time_seconds) as number | undefined,
+    start_date_local: (e.start_date_local ?? e.date) as string | undefined,
+    average_watts: (e.average_watts ?? e.avg_power_value) as number | null | undefined,
+    activity_id: (e.activity_id ?? e.strava_activity_id) as number | null | undefined,
+  }));
+  return { entries };
 }
 
 export interface CyclingEvent {
