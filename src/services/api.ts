@@ -50,7 +50,7 @@ async function callEdgeFunction<T = unknown>(
 ): Promise<T | null> {
   if (!EDGE_FN_BASE) return null;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
   try {
     const res = await fetch(`${EDGE_FN_BASE}/${fnName}`, {
       method: 'POST',
@@ -59,7 +59,8 @@ async function callEdgeFunction<T = unknown>(
       signal: controller.signal,
     });
     if (!res.ok) {
-      console.warn(`[EdgeFn] ${fnName} failed:`, res.status);
+      const errBody = await res.text().catch(() => '');
+      console.warn(`[EdgeFn] ${fnName} failed:`, res.status, errBody);
       return null;
     }
     return await res.json() as T;

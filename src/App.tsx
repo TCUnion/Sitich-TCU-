@@ -41,12 +41,22 @@ import {
   CalendarDays,
   Ruler,
   Sparkles,
+  Mountain,
+  TrendingUp,
+  Activity,
+  Bike,
+  Zap,
 } from 'lucide-react';
 
 import { Screen, Challenge, User } from './types';
 import { trackPageView, trackEvent, setUserProperties } from './services/analytics';
 import { useSegmentData, StravaSegment } from './hooks/useSegmentData';
+import { useAthleteStats } from './hooks/useAthleteStats';
+import { useAthleteZones } from './hooks/useAthleteZones';
+import { getAthleteActivities, type StravaSummaryActivity } from './services/stravaApi';
 import { MapThumbnail } from './components/MapThumbnail';
+import { ActivityScreen } from './components/ActivityScreen';
+import { ActivityDetailScreen } from './components/ActivityDetailScreen';
 import { getLeaderboard, getMyRegistrations, getMySegmentElapsedTimes, getMySegmentBestEfforts, MyBestEffort, getSegmentElapsedTimes, getSegmentRegistrations, getSegmentEfforts, SegmentEffortEntry, registerChallenge, refreshAthleteProfile, RegistrationRecord, getTCUMemberByStravaId, TCUMemberProfile, findTCUMemberByIdOrAccount, checkTcuAccountBinding, triggerMemberBindingOtp, verifyMemberOtp, confirmMemberBinding, clearMemberOtp, TCUMemberSearch, upsertSegmentMetadata, getSegmentRankMap } from './services/api';
 
 interface LeaderboardEntry {
@@ -129,6 +139,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('explore');
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [rankingInitSegId, setRankingInitSegId] = useState<number | null>(null);
+  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
 
   // Track initial page view on mount
   useEffect(() => {
@@ -182,6 +193,21 @@ export default function App() {
               <ExploreScreen onNavigate={navigateTo} />
             </motion.div>
           )}
+          {currentScreen === 'activities' && (
+            <motion.div key="activities">
+              <ActivityScreen
+                onViewDetail={(actId) => { setSelectedActivityId(actId); navigateTo('activity-detail'); }}
+              />
+            </motion.div>
+          )}
+          {currentScreen === 'activity-detail' && selectedActivityId && (
+            <motion.div key="activity-detail">
+              <ActivityDetailScreen
+                activityId={selectedActivityId}
+                onBack={() => navigateTo('activities')}
+              />
+            </motion.div>
+          )}
           {currentScreen === 'ranking' && (
             <motion.div key="ranking">
               <RankingScreen initialSegId={rankingInitSegId} />
@@ -227,7 +253,7 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
   onLogout: () => void,
 }) {
   const isLogin = currentScreen === 'login';
-  const isDetail = currentScreen === 'race-detail';
+  const isDetail = currentScreen === 'race-detail' || currentScreen === 'activity-detail';
   const [showMenu, setShowMenu] = React.useState(false);
   const [barsVisible, setBarsVisible] = React.useState(true);
   const lastScrollY = React.useRef(0);
@@ -322,10 +348,16 @@ function Layout({ children, currentScreen, onNavigate, onBack, avatar, isLoggedI
             label="探索"
           />
           <NavButton
+            active={currentScreen === 'activities' || currentScreen === 'activity-detail'}
+            onClick={() => onNavigate('activities')}
+            icon={<Activity className="w-6 h-6" />}
+            label="活動"
+          />
+          <NavButton
             active={currentScreen === 'ranking'}
             onClick={() => onNavigate('ranking')}
             icon={<Trophy className="w-6 h-6" />}
-            label="排名"
+            label="排行"
           />
           <NavButton
             active={currentScreen === 'register'}
@@ -1307,6 +1339,18 @@ function ProfileScreen({ onNavigate, onGoToRanking }: { onNavigate: (screen: Scr
   const [bindingOtp, setBindingOtp] = useState('');
   const [bindingLoading, setBindingLoading] = useState(false);
   const [bindingError, setBindingError] = useState('');
+  const { stats: athleteStats, loading: statsLoading } = useAthleteStats(athlete?.id);
+  const { zones: athleteZones } = useAthleteZones(athlete?.id);
+  const [recentActivities, setRecentActivities] = useState<StravaSummaryActivity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!athlete) return;
+    setActivitiesLoading(true);
+    getAthleteActivities(athlete.id, { per_page: 5 })
+      .then(data => setRecentActivities(data ?? []))
+      .finally(() => setActivitiesLoading(false));
+  }, [athlete?.id]);
 
   useEffect(() => {
     if (!athlete) return;
@@ -1523,6 +1567,131 @@ function ProfileScreen({ onNavigate, onGoToRanking }: { onNavigate: (screen: Scr
           )}
         </div>
       </section>
+
+      {/* 年度統計摘要 */}
+      {athlete && (
+        <section className="mb-10">
+          <div className="flex items-center gap-2 text-on-surface-variant mb-4">
+            <TrendingUp className="w-4 h-4" />
+            <span className="text-xs font-medium">年度統計</span>
+            <span className="ml-auto text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{new Date().getFullYear()}</span>
+          </div>
+          {statsLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} className="bg-surface-container-high rounded-2xl p-4 border border-white/5 animate-pulse">
+                  <div className="h-2.5 bg-surface-container-highest rounded w-1/2 mb-2" />
+                  <div className="h-5 bg-surface-container-highest rounded w-3/4" />
+                </div>
+              ))}
+            </div>
+          ) : athleteStats ? (
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard icon={<Bike className="w-3.5 h-3.5 text-primary" />} label="總里程" value={`${(athleteStats.ytd_ride_totals.distance / 1000).toLocaleString('zh-TW', { maximumFractionDigits: 0 })} km`} />
+              <StatCard icon={<Mountain className="w-3.5 h-3.5 text-secondary" />} label="總爬升" value={`${athleteStats.ytd_ride_totals.elevation_gain.toLocaleString('zh-TW', { maximumFractionDigits: 0 })} m`} />
+              <StatCard icon={<TimerIcon className="w-3.5 h-3.5 text-tertiary" />} label="騎乘時間" value={`${Math.round(athleteStats.ytd_ride_totals.moving_time / 3600)} 小時`} />
+              <StatCard icon={<Zap className="w-3.5 h-3.5 text-amber-400" />} label="騎乘次數" value={`${athleteStats.ytd_ride_totals.count} 趟`} />
+            </div>
+          ) : (
+            <div className="bg-surface-container-high rounded-2xl p-4 border border-white/5 text-center">
+              <p className="text-on-surface-variant text-xs">無法載入統計資料</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* 訓練區間 */}
+      {athleteZones?.heart_rate && (
+        <section className="mb-10">
+          <div className="flex items-center gap-2 text-on-surface-variant mb-4">
+            <Activity className="w-4 h-4" />
+            <span className="text-xs font-medium">心率訓練區間</span>
+          </div>
+          <div className="bg-surface-container-high rounded-2xl p-4 border border-white/5 space-y-2">
+            {athleteZones.heart_rate.zones.map((zone, i) => {
+              const zoneColors = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444'];
+              const zoneLabels = ['恢復', '耐力', '有氧', '無氧閾值', '最大'];
+              const maxHr = athleteZones.heart_rate.zones[athleteZones.heart_rate.zones.length - 1]?.min ?? 200;
+              const widthPct = zone.max > 0
+                ? Math.min(100, ((zone.max - zone.min) / maxHr) * 100 + 20)
+                : 100;
+              return (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-[10px] text-on-surface-variant w-16 shrink-0">Z{i + 1} {zoneLabels[i] ?? ''}</span>
+                  <div className="flex-1 h-5 bg-surface-container rounded-full overflow-hidden relative">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${widthPct}%`, backgroundColor: zoneColors[i] ?? '#888' }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-on-surface-variant w-20 text-right shrink-0">
+                    {zone.min}–{zone.max > 0 ? zone.max : '∞'} bpm
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* 近期活動 */}
+      {athlete && (
+        <section className="mb-10">
+          <div className="flex items-center gap-2 text-on-surface-variant mb-4">
+            <Flame className="w-4 h-4" />
+            <span className="text-xs font-medium">近期活動</span>
+          </div>
+          {activitiesLoading ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="bg-surface-container-high rounded-2xl p-4 border border-white/5 animate-pulse">
+                  <div className="h-3.5 bg-surface-container-highest rounded w-3/4 mb-2" />
+                  <div className="h-2.5 bg-surface-container-highest rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : recentActivities.length > 0 ? (
+            <div className="space-y-3">
+              {recentActivities.map(act => (
+                <a
+                  key={act.id}
+                  href={`https://www.strava.com/activities/${act.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-surface-container-high rounded-2xl p-4 border border-white/5 flex items-center gap-4 hover:bg-surface-container-highest transition-colors block"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm leading-snug truncate">{act.name}</p>
+                    <p className="text-[10px] text-on-surface-variant mt-0.5">
+                      {new Date(act.start_date_local).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', weekday: 'short' })}
+                      {' · '}
+                      {(act.distance / 1000).toFixed(1)} km
+                      {act.total_elevation_gain > 0 && ` · ↑${Math.round(act.total_elevation_gain)}m`}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-headline italic-bold text-primary text-sm">
+                      {Math.floor(act.moving_time / 3600) > 0 && `${Math.floor(act.moving_time / 3600)}:`}
+                      {String(Math.floor((act.moving_time % 3600) / 60)).padStart(2, '0')}:
+                      {String(act.moving_time % 60).padStart(2, '0')}
+                    </p>
+                    {act.average_watts && (
+                      <p className="text-[10px] text-on-surface-variant mt-0.5">
+                        <Zap className="w-2.5 h-2.5 inline" /> {Math.round(act.average_watts)}W
+                      </p>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-surface-container-high rounded-2xl p-6 text-center border border-white/5">
+              <Bike className="w-8 h-8 text-on-surface-variant/40 mx-auto mb-3" />
+              <p className="text-on-surface-variant text-sm">尚無近期活動</p>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* 我的挑戰記錄 */}
       <section className="mb-10">
@@ -1839,6 +2008,18 @@ function ProfileScreen({ onNavigate, onGoToRanking }: { onNavigate: (screen: Scr
         </div>
       </section>
     </motion.div>
+  );
+}
+
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="bg-surface-container-high rounded-2xl p-4 border border-white/5 shadow-md">
+      <div className="flex items-center gap-1.5 mb-1">
+        {icon}
+        <span className="text-[10px] text-on-surface-variant uppercase tracking-wider">{label}</span>
+      </div>
+      <p className="font-headline italic-bold text-lg text-on-surface">{value}</p>
+    </div>
   );
 }
 

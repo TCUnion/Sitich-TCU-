@@ -1,4 +1,4 @@
-export type Screen = 'login' | 'explore' | 'ranking' | 'register' | 'profile' | 'race-detail' | 'admin';
+export type Screen = 'login' | 'explore' | 'activities' | 'ranking' | 'register' | 'profile' | 'race-detail' | 'admin' | 'activity-detail';
 
 export interface Challenge {
   id: string;
